@@ -382,5 +382,17 @@ namespace IhGit
         {
             PullRequest();
         }
+
+        private void buttonDaniel_Click(object sender, EventArgs e)
+        {
+            textBoxUserName.Text = "TheBlubb14";
+            textBoxRepo.Text = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
+        }
+
+        private void buttonSpike_Click(object sender, EventArgs e)
+        {
+            textBoxUserName.Text = "as-spikechan";
+            textBoxRepo.Text = "C:\\Users\\Spike\\Documents\\Github\\PaxControl";
+        }
     }
 }

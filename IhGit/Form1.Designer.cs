@@ -51,6 +51,8 @@
             label5 = new Label();
             label6 = new Label();
             textBoxRepo = new TextBox();
+            buttonDaniel = new Button();
+            buttonSpike = new Button();
             SuspendLayout();
             // 
             // button1
@@ -261,11 +263,33 @@
             textBoxRepo.TabIndex = 22;
             textBoxRepo.Text = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
             // 
+            // buttonDaniel
+            // 
+            buttonDaniel.Location = new Point(131, 628);
+            buttonDaniel.Name = "buttonDaniel";
+            buttonDaniel.Size = new Size(75, 23);
+            buttonDaniel.TabIndex = 24;
+            buttonDaniel.Text = "Daniel";
+            buttonDaniel.UseVisualStyleBackColor = true;
+            buttonDaniel.Click += buttonDaniel_Click;
+            // 
+            // buttonSpike
+            // 
+            buttonSpike.Location = new Point(212, 628);
+            buttonSpike.Name = "buttonSpike";
+            buttonSpike.Size = new Size(75, 23);
+            buttonSpike.TabIndex = 25;
+            buttonSpike.Text = "Spike";
+            buttonSpike.UseVisualStyleBackColor = true;
+            buttonSpike.Click += buttonSpike_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1148, 722);
+            Controls.Add(buttonSpike);
+            Controls.Add(buttonDaniel);
             Controls.Add(label6);
             Controls.Add(textBoxRepo);
             Controls.Add(label5);
@@ -320,5 +344,7 @@
         private Label label5;
         private Label label6;
         private TextBox textBoxRepo;
+        private Button buttonDaniel;
+        private Button buttonSpike;
     }
 }
