@@ -11,10 +11,7 @@ namespace IhGit
     public partial class Form1 : Form
     {
         const int max_support_version = 17;
-        //private string userName = "TheBlubb14";
-        //private string baseBranch = "stable";
-        //private string newBranch = "work/TestBlubb";
-        //private string repoPath = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
+
         private string repoPath => textBoxRepo.Text;
         private string userName => textBoxUserName.Text;
 
@@ -50,7 +47,6 @@ namespace IhGit
         {
             textBoxOutput.Invoke(() => textBoxOutput.Text += m + Environment.NewLine);
         }
-
 
         private string? Fetch()
         {
