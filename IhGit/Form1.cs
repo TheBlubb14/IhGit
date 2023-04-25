@@ -1,24 +1,22 @@
 using AdysTech.CredentialManager;
 using CliWrap;
-using CliWrap.Buffered;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Xml.Linq;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace IhGit
 {
     public partial class Form1 : Form
     {
         const int max_support_version = 17;
-        private string userName = "TheBlubb14";
-        private string baseBranch = "stable";
-        private string newBranch = "work/TestBlubb";
-        private string repoPath = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
+        //private string userName = "TheBlubb14";
+        //private string baseBranch = "stable";
+        //private string newBranch = "work/TestBlubb";
+        //private string repoPath = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
+        private string repoPath => textBoxRepo.Text;
+        private string userName => textBoxUserName.Text;
 
         // https://github.com/libgit2/libgit2sharp
         //private Repository repo;
@@ -162,7 +160,17 @@ namespace IhGit
 
             foreach (var commit in commits)
             {
-                await Git("cherry-pick", commit);
+                try
+                {
+                    await Git("cherry-pick", commit);
+                }
+                catch (Exception ex)
+                {
+                    var result = MessageBox.Show(ex.Message, "Cherry pick failed", MessageBoxButtons.OKCancel);
+
+                    if (result == DialogResult.Cancel)
+                        return;
+                }
             }
             Push();
             PullRequest();

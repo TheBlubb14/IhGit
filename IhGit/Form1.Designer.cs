@@ -47,6 +47,10 @@
             buttonNewBranch = new Button();
             buttonPullRequestMultiple = new Button();
             checkBoxStartOnSameVersion = new CheckBox();
+            textBoxUserName = new TextBox();
+            label5 = new Label();
+            label6 = new Label();
+            textBoxRepo = new TextBox();
             SuspendLayout();
             // 
             // button1
@@ -223,11 +227,49 @@
             checkBoxStartOnSameVersion.Text = "Start on same version";
             checkBoxStartOnSameVersion.UseVisualStyleBackColor = true;
             // 
+            // textBoxUserName
+            // 
+            textBoxUserName.Location = new Point(131, 570);
+            textBoxUserName.Name = "textBoxUserName";
+            textBoxUserName.Size = new Size(311, 23);
+            textBoxUserName.TabIndex = 20;
+            textBoxUserName.Text = "TheBlubb14";
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Location = new Point(12, 578);
+            label5.Name = "label5";
+            label5.Size = new Size(60, 15);
+            label5.TabIndex = 21;
+            label5.Text = "Username";
+            // 
+            // label6
+            // 
+            label6.AutoSize = true;
+            label6.Location = new Point(12, 607);
+            label6.Name = "label6";
+            label6.Size = new Size(34, 15);
+            label6.TabIndex = 23;
+            label6.Text = "Repo";
+            // 
+            // textBoxRepo
+            // 
+            textBoxRepo.Location = new Point(131, 599);
+            textBoxRepo.Name = "textBoxRepo";
+            textBoxRepo.Size = new Size(311, 23);
+            textBoxRepo.TabIndex = 22;
+            textBoxRepo.Text = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1148, 722);
+            Controls.Add(label6);
+            Controls.Add(textBoxRepo);
+            Controls.Add(label5);
+            Controls.Add(textBoxUserName);
             Controls.Add(checkBoxStartOnSameVersion);
             Controls.Add(buttonPullRequestMultiple);
             Controls.Add(buttonNewBranch);
@@ -274,5 +316,9 @@
         private Button buttonNewBranch;
         private Button buttonPullRequestMultiple;
         private CheckBox checkBoxStartOnSameVersion;
+        private TextBox textBoxUserName;
+        private Label label5;
+        private Label label6;
+        private TextBox textBoxRepo;
     }
 }
