@@ -149,7 +149,7 @@ namespace IhGit
             if (info is null)
                 return;
 
-            if (!SwitchBranch(info.NewOrigin))
+            if (!await SwitchBranch(info.NewOrigin))
                 return;
 
             CreateNewBranch(info.New);
@@ -166,6 +166,8 @@ namespace IhGit
 
                     if (result == DialogResult.Cancel)
                         return;
+
+                    await Git("cherry-pick", "--continue");
                 }
             }
             Push();
@@ -197,7 +199,7 @@ namespace IhGit
             OpenUrl($"https://github.com/airsphere-gmbh/PaxControl/compare/{branchName}...{newBranchName}?quick_pull=1&labels=upmerge{title}{description}");
         }
 
-        private bool SwitchBranch(string newBranch)
+        private async Task<bool> SwitchBranch(string newBranch)
         {
             if (checkBoxDryRun.Checked)
             {
@@ -209,10 +211,15 @@ namespace IhGit
             var branch = repo.Branches[newBranch];
 
             if (branch is null)
+            {
+                await Git($"checkout", newBranch);
+                branch = repo.Branches[newBranch];
+            }
+
+            if (branch is null)
                 return false;
 
-            var currentBranch = Commands.Checkout(repo, branch);
-            return currentBranch is not null;
+            return Commands.Checkout(repo, branch) is not null;
         }
 
         private void OpenUrl(string url)
