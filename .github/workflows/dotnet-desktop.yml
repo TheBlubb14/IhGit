@@ -1,0 +1,29 @@
+name: .NET
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+
+    # self-contained produces to big artifacts for github free plan
+    - name: Publish
+      run: dotnet publish -c Release --no-self-contained /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=embedded -o /output/no-self-contained IhGit/IhGit.csproj
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: IhGit
+        path: /output/no-self-contained/IhGit.exe
