@@ -1,8 +1,10 @@
 using AdysTech.CredentialManager;
 using CliWrap;
+using CliWrap.Exceptions;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using System.Diagnostics;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 
@@ -25,22 +27,52 @@ namespace IhGit
 
         private async void button1_Click(object sender, EventArgs e)
         {
-            await Git("status");
+            await Git(new("git status failed"), "status");
         }
 
-        private async Task Git(params string[] arg)
+        record ErrorInfo(string ErrorTitle, string? ErrorMessage = null, bool ShowDialog = true);
+        private async Task<bool> Git(ErrorInfo errorInfo, params string[] arg)
         {
             if (checkBoxDryRun.Checked)
             {
                 Log("Dry run: git " + string.Join(" ", arg));
-                return;
+                return true;
             }
 
-            var cmd = Cli.Wrap("git.exe")
-                .WithArguments(arg)
-                .WithWorkingDirectory(repoPath) | Log;
-            await cmd.ExecuteAsync();
+            var retry = false;
+            do
+            {
+                retry = false;
+                var messages = new StringBuilder();
+                try
+                {
+                    var cmd = Cli.Wrap("git.exe")
+                        .WithArguments(arg)
+                        .WithWorkingDirectory(repoPath) | PipeTarget.Merge(PipeTarget.ToDelegate(Log), PipeTarget.ToStringBuilder(messages));
+                    await cmd.ExecuteAsync();
+                }
+                catch (CommandExecutionException)
+                {
+                    if (!errorInfo.ShowDialog)
+                        return false;
 
+                    var msg = errorInfo.ErrorMessage is null ? messages.ToString() : errorInfo.ErrorMessage + Environment.NewLine + Environment.NewLine + messages.ToString();
+                    var result = MessageBox.Show(msg, errorInfo.ErrorTitle, MessageBoxButtons.RetryCancel);
+
+                    switch (result)
+                    {
+                        case DialogResult.Retry:
+                            retry = true;
+                            break;
+
+                        case DialogResult.Cancel:
+                        default:
+                            return false;
+                    }
+                }
+            } while (retry);
+
+            return true;
         }
 
         private void Log(string m)
@@ -154,24 +186,59 @@ namespace IhGit
 
             CreateNewBranch(info.New);
 
+            using var repo = new Repository(repoPath);
             foreach (var commit in commits)
             {
-                try
+                var hasConflicts = false;
+                if (repo.Index.IsFullyMerged)
                 {
-                    await Git("cherry-pick", commit);
+                    var options = new CherryPickOptions()
+                    {
+                        CommitOnSuccess = true,
+                    };
+                    var c = repo.Lookup<Commit>(commit);
+                    var result = repo.CherryPick(c, c.Author, options);
+                    hasConflicts = result.Status == CherryPickStatus.Conflicts;
                 }
-                catch (Exception ex)
+                else
                 {
-                    var result = MessageBox.Show(ex.Message, "Cherry pick failed", MessageBoxButtons.OKCancel);
+                    hasConflicts = true;
+                }
 
-                    if (result == DialogResult.Cancel)
-                        return;
+                if (hasConflicts)
+                {
+                    do
+                    {
+                        var conflicts = repo.Index.Conflicts.Cast<Conflict>();
+                        var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x.Ancestor.Path));
+                        var mbox = MessageBox.Show("Waiting for merge conflicts to be solved.." + files, "cherry pick failed", MessageBoxButtons.CancelTryContinue);
 
-                    await Git("cherry-pick", "--continue");
+                        switch (mbox)
+                        {
+                            case DialogResult.TryAgain:
+                                // try again
+                                break;
+
+                            case DialogResult.Continue:
+                                // cherry pick continue
+                                await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
+                                break;
+
+                            case DialogResult.Cancel:
+                            default:
+                                return;
+                        }
+                    } while (!HasConflicts());
                 }
             }
             Push();
             PullRequest();
+        }
+
+        private bool HasConflicts()
+        {
+            using var repo = new Repository(repoPath);
+            return repo.Index.IsFullyMerged;
         }
 
         private void PullRequest()
@@ -212,7 +279,7 @@ namespace IhGit
 
             if (branch is null)
             {
-                await Git($"checkout", newBranch);
+                await Git(new("checkout failed"), $"checkout", newBranch);
                 branch = repo.Branches[newBranch];
             }
 
@@ -328,7 +395,7 @@ namespace IhGit
             var isStable = false;
             var version = 0;
 
-            if (currentBranchSplitted.Length < 1)
+            if (currentBranchSplitted.Length < 2)
             {
                 if (currentBranchSplitted[0] == "stable")
                 {
