@@ -221,6 +221,7 @@ namespace IhGit
 
                             case DialogResult.Continue:
                                 // cherry pick continue
+                                await Git(new("add . failed", ShowDialog: false), "add", ".");
                                 await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
                                 break;
 
