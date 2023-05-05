@@ -80,12 +80,12 @@ namespace IhGit
             textBoxOutput.Invoke(() => textBoxOutput.Text += m + Environment.NewLine);
         }
 
-        private string? Fetch()
+        private void Fetch()
         {
             if (checkBoxDryRun.Checked)
             {
                 Log("Dry run: git fetch origin");
-                return null;
+                return;
             }
 
             using var repo = new Repository(repoPath);
@@ -99,19 +99,31 @@ namespace IhGit
                 CredentialsProvider = GetCredentialsHandler()
             };
 
+            if (options.CredentialsProvider is null)
+                return;
+
             Commands.Fetch(repo, remote.Name, refSpecs, options, log);
-            return string.IsNullOrWhiteSpace(log) ? null : log;
+            Log(log);
         }
 
-        private CredentialsHandler GetCredentialsHandler()
+        private CredentialsHandler? GetCredentialsHandler()
         {
-            var cred = CredentialManager.GetCredentials("git:https://github.com");
-            return new CredentialsHandler((url, usernameFromUrl, types) =>
-            new UsernamePasswordCredentials()
+            try
             {
-                Username = userName,
-                Password = cred.Password,
-            });
+                var cred = CredentialManager.GetCredentials("git:https://github.com");
+                return new CredentialsHandler((url, usernameFromUrl, types) =>
+                new UsernamePasswordCredentials()
+                {
+                    Username = userName,
+                    Password = cred.Password,
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Cannot read 'git:https://github.com' from windows credential store{Environment.NewLine}{ex.Message}",
+                    "Error reading git credtentials");
+                return null;
+            }
         }
 
         private void CreateNewBranch(string name)
@@ -141,6 +153,10 @@ namespace IhGit
             {
                 CredentialsProvider = GetCredentialsHandler(),
             };
+
+            if (options.CredentialsProvider is null)
+                return;
+
             repo.Network.Push(repo.Network.Remotes["origin"], repo.Head.CanonicalName, options);
         }
 
@@ -275,19 +291,27 @@ namespace IhGit
                 return true;
             }
 
-            using var repo = new Repository(repoPath);
-            var branch = repo.Branches[newBranch];
-
-            if (branch is null)
+            try
             {
-                await Git(new("checkout failed"), $"checkout", newBranch);
-                branch = repo.Branches[newBranch];
+                using var repo = new Repository(repoPath);
+                var branch = repo.Branches[newBranch];
+
+                if (branch is null)
+                {
+                    await Git(new("checkout failed"), $"checkout", newBranch);
+                    branch = repo.Branches[newBranch];
+                }
+
+                if (branch is null)
+                    return false;
+
+                return Commands.Checkout(repo, branch) is not null;
             }
-
-            if (branch is null)
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, $"Error switching to branch '{newBranch}'");
                 return false;
-
-            return Commands.Checkout(repo, branch) is not null;
+            }
         }
 
         private void OpenUrl(string url)
@@ -311,31 +335,6 @@ namespace IhGit
             if (info is null)
                 return null;
 
-            //using var repo = new Repository(repoPath);
-            //var branchName = repo.Head.FriendlyName; // support/v4.17
-            //var splitBranch = branchName.Split('/');
-
-            //var isSupport = splitBranch[0] == "support";
-            //var isStable = splitBranch[0] == "stable";
-            //if (!isStable && !isSupport && !checkBoxDryRun.Checked)
-            //    return null;
-
-            //var featureName = textBoxFeatureName.Text?.Trim();
-            //if (string.IsNullOrWhiteSpace(featureName))
-            //    return null;
-
-            //string? newBranchName;
-            //if (isSupport)
-            //{
-            //    var version = splitBranch[1];
-            //    newBranchName = $"patch/{version}/{featureName}";
-            //}
-            //else
-            //{
-            //    newBranchName = $"work/{featureName}";
-            //}
-
-            //var newBranchName = $"{info.New}/{featureName}";
             CreateNewBranch(info.New);
             return info.New;
         }
@@ -390,60 +389,68 @@ namespace IhGit
         record BranchInfo(string Current, string New, bool IsStable, string Origin, string NewOrigin);
         private BranchInfo? GetBranchInfo(bool doNotCountVersionUp)
         {
-            var currentBranch = CurrentBranchName();
-            var currentBranchSplitted = currentBranch.Split("/", StringSplitOptions.RemoveEmptyEntries);
-
-            var isStable = false;
-            var version = 0;
-
-            if (currentBranchSplitted.Length < 2)
+            try
             {
-                if (currentBranchSplitted[0] == "stable")
+                var currentBranch = CurrentBranchName();
+                var currentBranchSplitted = currentBranch.Split("/", StringSplitOptions.RemoveEmptyEntries);
+
+                var isStable = false;
+                var version = 0;
+
+                if (currentBranchSplitted.Length < 2)
+                {
+                    if (currentBranchSplitted[0] == "stable")
+                    {
+                        isStable = true;
+                    }
+                    else
+                    {
+                        Log("Could not parse branch version");
+                        return null;
+                    }
+                }
+                else if (currentBranchSplitted[0] == "work")
                 {
                     isStable = true;
                 }
                 else
                 {
-                    Log("Could not parse branch version");
+                    var supportMatch = Regex.Match(currentBranchSplitted[1], "v4.(1\\d)");
+                    if (supportMatch.Success)
+                    {
+                        version = int.Parse(supportMatch.Groups[1].Value) + 1;
+
+                        if (doNotCountVersionUp)
+                            version--;
+                    }
+                    else
+                    {
+                        Log($"Could not parse branch version: {currentBranchSplitted[1]}");
+                        return null;
+                    }
+                }
+
+                var shouldBaseOnStable = isStable || version > max_support_version;
+                var originVersion = version - (doNotCountVersionUp ? 0 : 1);
+
+                var featureName = textBoxFeatureName.Text?.Trim();
+                if (string.IsNullOrWhiteSpace(featureName))
                     return null;
-                }
+
+                var newBranchName = shouldBaseOnStable ? "work" : $"patch/v4.{version}";
+                newBranchName += $"/{featureName}";
+
+                return new BranchInfo(currentBranch,
+                    newBranchName,
+                    isStable,
+                    shouldBaseOnStable ? "stable" : $"support/v4.{originVersion}",
+                    shouldBaseOnStable ? "stable" : $"support/v4.{version}");
             }
-            else if (currentBranchSplitted[0] == "work")
+            catch (Exception ex)
             {
-                isStable = true;
-            }
-            else
-            {
-                var supportMatch = Regex.Match(currentBranchSplitted[1], "v4.(1\\d)");
-                if (supportMatch.Success)
-                {
-                    version = int.Parse(supportMatch.Groups[1].Value) + 1;
-
-                    if (doNotCountVersionUp)
-                        version--;
-                }
-                else
-                {
-                    Log($"Could not parse branch version: {currentBranchSplitted[1]}");
-                    return null;
-                }
-            }
-
-            var shouldBaseOnStable = isStable || version > max_support_version;
-            var originVersion = version - (doNotCountVersionUp ? 0 : 1);
-
-            var featureName = textBoxFeatureName.Text?.Trim();
-            if (string.IsNullOrWhiteSpace(featureName))
+                MessageBox.Show(ex.Message, "Error getting branch information");
                 return null;
-
-            var newBranchName = shouldBaseOnStable ? "work" : $"patch/v4.{version}";
-            newBranchName += $"/{featureName}";
-
-            return new BranchInfo(currentBranch,
-                newBranchName,
-                isStable,
-                shouldBaseOnStable ? "stable" : $"support/v4.{originVersion}",
-                shouldBaseOnStable ? "stable" : $"support/v4.{version}");
+            }
         }
 
         private void buttonPullRequest_Click(object sender, EventArgs e)
