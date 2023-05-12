@@ -57,6 +57,7 @@
             label7 = new Label();
             buttonGeneratePassword = new Button();
             buttonOpenRepo = new Button();
+            checkBoxUseCurrentBranch = new CheckBox();
             SuspendLayout();
             // 
             // button1
@@ -344,11 +345,23 @@
             buttonOpenRepo.UseVisualStyleBackColor = true;
             buttonOpenRepo.Click += buttonOpenRepo_Click;
             // 
+            // checkBoxuseCurrentBranch
+            // 
+            checkBoxUseCurrentBranch.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            checkBoxUseCurrentBranch.AutoSize = true;
+            checkBoxUseCurrentBranch.Location = new Point(478, 353);
+            checkBoxUseCurrentBranch.Name = "checkBoxuseCurrentBranch";
+            checkBoxUseCurrentBranch.Size = new Size(126, 19);
+            checkBoxUseCurrentBranch.TabIndex = 30;
+            checkBoxUseCurrentBranch.Text = "Use current branch";
+            checkBoxUseCurrentBranch.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1140, 474);
+            Controls.Add(checkBoxUseCurrentBranch);
             Controls.Add(buttonOpenRepo);
             Controls.Add(buttonGeneratePassword);
             Controls.Add(label7);
@@ -415,5 +428,6 @@
         private Label label7;
         private Button buttonGeneratePassword;
         private Button buttonOpenRepo;
+        private CheckBox checkBoxUseCurrentBranch;
     }
 }

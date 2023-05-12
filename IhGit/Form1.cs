@@ -162,7 +162,7 @@ namespace IhGit
             Commands.Checkout(repo, branch);
         }
 
-        private void Push()
+        private async void Push()
         {
             if (checkBoxDryRun.Checked)
             {
@@ -170,16 +170,17 @@ namespace IhGit
                 return;
             }
 
-            using var repo = new Repository(repoPath);
-            PushOptions options = new()
-            {
-                CredentialsProvider = GetCredentialsHandler(),
-            };
+            await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin");
+            //using var repo = new Repository(repoPath);
+            //PushOptions options = new()
+            //{
+            //    CredentialsProvider = GetCredentialsHandler(),
+            //};
 
-            if (options.CredentialsProvider is null)
-                return;
+            //if (options.CredentialsProvider is null)
+            //    return;
 
-            repo.Network.Push(repo.Network.Remotes["origin"], repo.Head.CanonicalName, options);
+            //repo.Network.Push(repo.Network.Remotes["origin"], repo.Head.CanonicalName, options);
         }
 
         // Select base branch                               support/v4.16
@@ -219,16 +220,22 @@ namespace IhGit
             if (info is null)
                 return false;
 
-            if (!await SwitchBranch(info.NewOrigin))
-                return false;
+            if (!checkBoxUseCurrentBranch.Checked)
+            {
+                if (!await SwitchBranch(info.NewOrigin))
+                    return false;
 
-            CreateNewBranch(info.New);
+                CreateNewBranch(info.New);
+            }
 
-            using var repo = new Repository(repoPath);
             foreach (var commit in commits)
             {
                 var hasConflicts = false;
-                if (repo.Index.IsFullyMerged)
+                if (HasConflicts())
+                {
+                    hasConflicts = true;
+                }
+                else
                 {
                     if (checkBoxDryRun.Checked)
                     {
@@ -236,24 +243,23 @@ namespace IhGit
                     }
                     else
                     {
+                        using var repo = new Repository(repoPath);
                         var options = new CherryPickOptions()
                         {
                             CommitOnSuccess = true,
                         };
+                        Log("Cherry pick: " + commit);
                         var c = repo.Lookup<Commit>(commit);
                         var result = repo.CherryPick(c, c.Author, options);
                         hasConflicts = result.Status == CherryPickStatus.Conflicts;
                     }
-                }
-                else
-                {
-                    hasConflicts = true;
                 }
 
                 if (hasConflicts)
                 {
                     do
                     {
+                        using var repo = new Repository(repoPath);
                         var conflicts = repo.Index.Conflicts.Cast<Conflict>();
                         var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x.Ancestor.Path));
                         var mbox = MessageBox.Show("Waiting for merge conflicts to be solved.." + files, "cherry pick failed", MessageBoxButtons.CancelTryContinue);
@@ -274,7 +280,7 @@ namespace IhGit
                             default:
                                 return false;
                         }
-                    } while (!HasConflicts());
+                    } while (HasConflicts());
                 }
             }
             Push();
@@ -291,7 +297,7 @@ namespace IhGit
             }
 
             using var repo = new Repository(repoPath);
-            return repo.Index.IsFullyMerged;
+            return !repo.Index.IsFullyMerged;
         }
 
         private void PullRequest()
@@ -303,8 +309,8 @@ namespace IhGit
             var description = "";
 
             var title = string.IsNullOrWhiteSpace(textBoxTitle.Text)
-                ? "&title=" + HttpUtility.UrlEncode(info.PlainVersion)
-                : "&title=" + HttpUtility.UrlEncode($"{textBoxTitle.Text} {info.PlainVersion}");
+                ? "&title=" + HttpUtility.UrlEncode($"({info.PlainVersion})")
+                : "&title=" + HttpUtility.UrlEncode($"{textBoxTitle.Text} ({info.PlainVersion})");
 
             if (!string.IsNullOrWhiteSpace(textBoxDescription.Text))
             {
