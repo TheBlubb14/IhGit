@@ -333,7 +333,7 @@ namespace IhGit
 
                 if (branch is null)
                 {
-                    await Git(new("checkout failed"), $"checkout", newBranch);
+                    await Git(new("checkout failed"), $"checkout", "-b", newBranch);
                     branch = repo.Branches[newBranch];
                 }
 
