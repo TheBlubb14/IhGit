@@ -212,15 +212,15 @@ namespace IhGit
             await UpmergeOne(commits);
         }
 
-        private async Task UpmergeOne(string[] commits)
+        private async Task<bool> UpmergeOne(string[] commits)
         {
             var info = GetBranchInfo(checkBoxStartOnSameVersion.Checked);
 
             if (info is null)
-                return;
+                return false;
 
             if (!await SwitchBranch(info.NewOrigin))
-                return;
+                return false;
 
             CreateNewBranch(info.New);
 
@@ -272,13 +272,14 @@ namespace IhGit
 
                             case DialogResult.Cancel:
                             default:
-                                return;
+                                return false;
                         }
                     } while (!HasConflicts());
                 }
             }
             Push();
             PullRequest();
+            return true;
         }
 
         private bool HasConflicts()
@@ -413,7 +414,11 @@ namespace IhGit
                 //if (!SwitchBranch(info.NewOrigin))
                 //    break;
 
-                await UpmergeOne(commits);
+                if (!await UpmergeOne(commits))
+                {
+                    Log($"Upmerge failed. Aborting rest of the branches");
+                    return;
+                }
 
                 if (checkBoxDryRun.Checked)
                     Log("Warning, will not walk through each upmerge in dry-run");
