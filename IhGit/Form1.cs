@@ -300,14 +300,11 @@ namespace IhGit
 
             if (info is null)
                 return;
-
-            var title = "";
             var description = "";
 
-            if (!string.IsNullOrWhiteSpace(textBoxTitle.Text))
-            {
-                title = "&title=" + HttpUtility.UrlEncode(textBoxTitle.Text);
-            }
+            var title = string.IsNullOrWhiteSpace(textBoxTitle.Text)
+                ? "&title=" + HttpUtility.UrlEncode(info.PlainVersion)
+                : "&title=" + HttpUtility.UrlEncode($"{textBoxTitle.Text} {info.PlainVersion}");
 
             if (!string.IsNullOrWhiteSpace(textBoxDescription.Text))
             {
@@ -426,7 +423,7 @@ namespace IhGit
             } while (!info.IsStable && !checkBoxDryRun.Checked);
         }
 
-        record BranchInfo(string Current, string New, bool IsStable, string Origin, string NewOrigin);
+        record BranchInfo(string Current, string New, bool IsStable, string Origin, string NewOrigin, string PlainVersion);
         private BranchInfo? GetBranchInfo(bool doNotCountVersionUp)
         {
             try
@@ -484,7 +481,8 @@ namespace IhGit
                     newBranchName,
                     isStable,
                     shouldBaseOnStable ? "stable" : $"support/v4.{originVersion}",
-                    shouldBaseOnStable ? "stable" : $"support/v4.{version}");
+                    shouldBaseOnStable ? "stable" : $"support/v4.{version}",
+                    shouldBaseOnStable ? "stable" : $"4.{version}");
             }
             catch (Exception ex)
             {
@@ -512,7 +510,7 @@ namespace IhGit
 
         private void buttonGeneratePassword_Click(object sender, EventArgs e)
         {
-            OpenUrl("https://github.com/settings/tokens/new?scopes=public_repo,repo:status&description=Airsphere+IhGit");
+            OpenUrl("https://github.com/settings/tokens/new?scopes=repo&description=Airsphere+IhGit");
             MessageBox.Show("Remember to save your token somewhere!");
         }
 
