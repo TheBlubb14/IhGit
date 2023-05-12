@@ -3,10 +3,12 @@ using CliWrap;
 using CliWrap.Exceptions;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
+using System;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using System.Xml.Linq;
 
 namespace IhGit
 {
@@ -15,7 +17,8 @@ namespace IhGit
         const int max_support_version = 17;
 
         private string repoPath => textBoxRepo.Text;
-        private string userName => textBoxUserName.Text;
+        private string userName => comboBoxUsername.Text;
+        private string password => textBoxPassword.Text;
 
         // https://github.com/libgit2/libgit2sharp
         //private Repository repo;
@@ -23,6 +26,18 @@ namespace IhGit
         public Form1()
         {
             InitializeComponent();
+            comboBoxUsername.Items.AddRange(new[] {
+                "TheBlubb14",
+                "as-spikechan",
+                "fpfleide",
+                "otabekgb",
+                "tomwendel",
+                "Gallimathias",
+                "harutmik",
+                "Matthias-Schw",
+                "geraldgreiling",
+            });
+            comboBoxUsername.SelectedIndex = 0;
         }
 
         private async void button1_Click(object sender, EventArgs e)
@@ -110,12 +125,19 @@ namespace IhGit
         {
             try
             {
-                var cred = CredentialManager.GetCredentials("git:https://github.com");
+                var pw = string.IsNullOrWhiteSpace(password) ? CredentialManager.GetCredentials("git:https://github.com")?.Password : password;
+
+                if (pw is null)
+                {
+                    MessageBox.Show("Either provide one in the textbox or ensure 'git:https://github.com' is in the windows credential store", "Could not read password");
+                    return null;
+                }
+
                 return new CredentialsHandler((url, usernameFromUrl, types) =>
                 new UsernamePasswordCredentials()
                 {
                     Username = userName,
-                    Password = cred.Password,
+                    Password = pw,
                 });
             }
             catch (Exception ex)
@@ -208,13 +230,20 @@ namespace IhGit
                 var hasConflicts = false;
                 if (repo.Index.IsFullyMerged)
                 {
-                    var options = new CherryPickOptions()
+                    if (checkBoxDryRun.Checked)
                     {
-                        CommitOnSuccess = true,
-                    };
-                    var c = repo.Lookup<Commit>(commit);
-                    var result = repo.CherryPick(c, c.Author, options);
-                    hasConflicts = result.Status == CherryPickStatus.Conflicts;
+                        Log($"Dry run: git cherry-pick {commit}");
+                    }
+                    else
+                    {
+                        var options = new CherryPickOptions()
+                        {
+                            CommitOnSuccess = true,
+                        };
+                        var c = repo.Lookup<Commit>(commit);
+                        var result = repo.CherryPick(c, c.Author, options);
+                        hasConflicts = result.Status == CherryPickStatus.Conflicts;
+                    }
                 }
                 else
                 {
@@ -254,6 +283,12 @@ namespace IhGit
 
         private bool HasConflicts()
         {
+            if (checkBoxDryRun.Checked)
+            {
+                Log("Dry run: git diff --check");
+                return false;
+            }
+
             using var repo = new Repository(repoPath);
             return repo.Index.IsFullyMerged;
         }
@@ -460,14 +495,32 @@ namespace IhGit
 
         private void buttonDaniel_Click(object sender, EventArgs e)
         {
-            textBoxUserName.Text = "TheBlubb14";
+            comboBoxUsername.SelectedItem = "TheBlubb14";
             textBoxRepo.Text = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
         }
 
         private void buttonSpike_Click(object sender, EventArgs e)
         {
-            textBoxUserName.Text = "as-spikechan";
+            comboBoxUsername.SelectedItem = "as-spikechan";
             textBoxRepo.Text = "C:\\Users\\Spike\\Documents\\Github\\PaxControl";
+        }
+
+        private void buttonGeneratePassword_Click(object sender, EventArgs e)
+        {
+            OpenUrl("https://github.com/settings/tokens/new?scopes=public_repo,repo:status&description=Airsphere+IhGit");
+            MessageBox.Show("Remember to save your token somewhere!");
+        }
+
+        private void buttonOpenRepo_Click(object sender, EventArgs e)
+        {
+            using var dlg = new FolderBrowserDialog();
+            dlg.AutoUpgradeEnabled = true;
+            dlg.ShowNewFolderButton = false;
+
+            if (dlg.ShowDialog() != DialogResult.OK)
+                return;
+
+            textBoxRepo.Text = dlg.SelectedPath;
         }
     }
 }

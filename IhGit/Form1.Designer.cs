@@ -47,12 +47,16 @@
             buttonNewBranch = new Button();
             buttonPullRequestMultiple = new Button();
             checkBoxStartOnSameVersion = new CheckBox();
-            textBoxUserName = new TextBox();
             label5 = new Label();
             label6 = new Label();
             textBoxRepo = new TextBox();
             buttonDaniel = new Button();
             buttonSpike = new Button();
+            comboBoxUsername = new ComboBox();
+            textBoxPassword = new TextBox();
+            label7 = new Label();
+            buttonGeneratePassword = new Button();
+            buttonOpenRepo = new Button();
             SuspendLayout();
             // 
             // button1
@@ -243,15 +247,6 @@
             checkBoxStartOnSameVersion.Text = "Start on same version";
             checkBoxStartOnSameVersion.UseVisualStyleBackColor = true;
             // 
-            // textBoxUserName
-            // 
-            textBoxUserName.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            textBoxUserName.Location = new Point(13, 295);
-            textBoxUserName.Name = "textBoxUserName";
-            textBoxUserName.Size = new Size(323, 23);
-            textBoxUserName.TabIndex = 9;
-            textBoxUserName.Text = "TheBlubb14";
-            // 
             // label5
             // 
             label5.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
@@ -277,7 +272,7 @@
             textBoxRepo.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             textBoxRepo.Location = new Point(13, 339);
             textBoxRepo.Name = "textBoxRepo";
-            textBoxRepo.Size = new Size(323, 23);
+            textBoxRepo.Size = new Size(290, 23);
             textBoxRepo.TabIndex = 11;
             textBoxRepo.Text = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
             // 
@@ -303,17 +298,67 @@
             buttonSpike.UseVisualStyleBackColor = true;
             buttonSpike.Click += buttonSpike_Click;
             // 
+            // comboBoxUsername
+            // 
+            comboBoxUsername.FormattingEnabled = true;
+            comboBoxUsername.Location = new Point(13, 296);
+            comboBoxUsername.Name = "comboBoxUsername";
+            comboBoxUsername.Size = new Size(155, 23);
+            comboBoxUsername.TabIndex = 25;
+            // 
+            // textBoxPassword
+            // 
+            textBoxPassword.Location = new Point(174, 297);
+            textBoxPassword.Name = "textBoxPassword";
+            textBoxPassword.PasswordChar = '*';
+            textBoxPassword.Size = new Size(129, 23);
+            textBoxPassword.TabIndex = 26;
+            // 
+            // label7
+            // 
+            label7.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            label7.AutoSize = true;
+            label7.Location = new Point(174, 277);
+            label7.Name = "label7";
+            label7.Size = new Size(57, 15);
+            label7.TabIndex = 27;
+            label7.Text = "Password";
+            // 
+            // buttonGeneratePassword
+            // 
+            buttonGeneratePassword.Location = new Point(309, 296);
+            buttonGeneratePassword.Name = "buttonGeneratePassword";
+            buttonGeneratePassword.Size = new Size(27, 23);
+            buttonGeneratePassword.TabIndex = 28;
+            buttonGeneratePassword.Text = "+";
+            buttonGeneratePassword.UseVisualStyleBackColor = true;
+            buttonGeneratePassword.Click += buttonGeneratePassword_Click;
+            // 
+            // buttonOpenRepo
+            // 
+            buttonOpenRepo.Location = new Point(310, 339);
+            buttonOpenRepo.Name = "buttonOpenRepo";
+            buttonOpenRepo.Size = new Size(27, 23);
+            buttonOpenRepo.TabIndex = 29;
+            buttonOpenRepo.Text = "✎";
+            buttonOpenRepo.UseVisualStyleBackColor = true;
+            buttonOpenRepo.Click += buttonOpenRepo_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1140, 474);
+            Controls.Add(buttonOpenRepo);
+            Controls.Add(buttonGeneratePassword);
+            Controls.Add(label7);
+            Controls.Add(textBoxPassword);
+            Controls.Add(comboBoxUsername);
             Controls.Add(buttonSpike);
             Controls.Add(buttonDaniel);
             Controls.Add(label6);
             Controls.Add(textBoxRepo);
             Controls.Add(label5);
-            Controls.Add(textBoxUserName);
             Controls.Add(checkBoxStartOnSameVersion);
             Controls.Add(buttonPullRequestMultiple);
             Controls.Add(buttonNewBranch);
@@ -360,11 +405,15 @@
         private Button buttonNewBranch;
         private Button buttonPullRequestMultiple;
         private CheckBox checkBoxStartOnSameVersion;
-        private TextBox textBoxUserName;
         private Label label5;
         private Label label6;
         private TextBox textBoxRepo;
         private Button buttonDaniel;
         private Button buttonSpike;
+        private ComboBox comboBoxUsername;
+        private TextBox textBoxPassword;
+        private Label label7;
+        private Button buttonGeneratePassword;
+        private Button buttonOpenRepo;
     }
 }
