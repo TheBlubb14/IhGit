@@ -21,7 +21,6 @@ namespace IhGit
         private string password => textBoxPassword.Text;
 
         // https://github.com/libgit2/libgit2sharp
-        //private Repository repo;
 
         public Form1()
         {
@@ -160,10 +159,6 @@ namespace IhGit
             }
 
             await Git(new("git checkout failed", $"git checkout -b {name} failed"), "checkout", "-b", name);
-            //using var repo = new Repository(repoPath);
-            //var branch = repo.CreateBranch(name);
-
-            //Commands.Checkout(repo, branch);
         }
 
         private async void Push()
@@ -174,18 +169,7 @@ namespace IhGit
                 return;
             }
 
-            var current = GetBranchInfo(checkBoxStartOnSameVersion.Checked);
-            await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", current.Current);
-            //using var repo = new Repository(repoPath);
-            //PushOptions options = new()
-            //{
-            //    CredentialsProvider = GetCredentialsHandler(),
-            //};
-
-            //if (options.CredentialsProvider is null)
-            //    return;
-
-            //repo.Network.Push(repo.Network.Remotes["origin"], repo.Head.CanonicalName, options);
+            await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName());
         }
 
         // Select base branch                               support/v4.16
@@ -197,12 +181,6 @@ namespace IhGit
         // Cherry pick commits                              xxxx, yyyy
         // Open PR Website                                  https://github.com/airsphere-gmbh/PaxControl/compare/support/v4.17...patch/v4.17/FastIdPatch?quick_pull=1&labels=upmerge
         // -- loop
-
-        protected override void OnClosed(EventArgs e)
-        {
-            //repo.Dispose();
-            base.OnClosed(e);
-        }
 
         private void buttonClear_Click(object sender, EventArgs e)
         {
@@ -230,7 +208,7 @@ namespace IhGit
                 if (!await SwitchBranch(info.NewOrigin))
                     return false;
 
-                CreateNewBranch(info.New);
+                await CreateNewBranch(info.New);
             }
 
             foreach (var commit in commits)
@@ -362,14 +340,14 @@ namespace IhGit
             });
         }
 
-        private string? NewBranch()
+        private async Task<string?> NewBranch()
         {
             var info = GetBranchInfo(checkBoxStartOnSameVersion.Checked);
 
             if (info is null)
                 return null;
 
-            CreateNewBranch(info.New);
+            await CreateNewBranch(info.New);
             return info.New;
         }
 
@@ -390,9 +368,9 @@ namespace IhGit
             Push();
         }
 
-        private void buttonNewBranch_Click(object sender, EventArgs e)
+        private async void buttonNewBranch_Click(object sender, EventArgs e)
         {
-            NewBranch();
+            await NewBranch();
         }
 
         private async void buttonPullRequestMultiple_Click(object sender, EventArgs e)
