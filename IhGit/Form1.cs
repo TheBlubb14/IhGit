@@ -61,12 +61,15 @@ namespace IhGit
                 var messages = new StringBuilder();
                 try
                 {
+                    var pipe = PipeTarget.Merge(PipeTarget.ToDelegate(Log), PipeTarget.ToStringBuilder(messages));
                     var cmd = Cli.Wrap("git.exe")
                         .WithArguments(arg)
-                        .WithWorkingDirectory(repoPath) | PipeTarget.Merge(PipeTarget.ToDelegate(Log), PipeTarget.ToStringBuilder(messages));
+                        .WithStandardErrorPipe(pipe)
+                        .WithStandardOutputPipe(pipe)
+                        .WithWorkingDirectory(repoPath);
                     await cmd.ExecuteAsync();
                 }
-                catch (CommandExecutionException)
+                catch (CommandExecutionException ex)
                 {
                     if (!errorInfo.ShowDialog)
                         return false;
@@ -148,7 +151,7 @@ namespace IhGit
             }
         }
 
-        private void CreateNewBranch(string name)
+        private async Task CreateNewBranch(string name)
         {
             if (checkBoxDryRun.Checked)
             {
@@ -156,10 +159,11 @@ namespace IhGit
                 return;
             }
 
-            using var repo = new Repository(repoPath);
-            var branch = repo.CreateBranch(name);
+            await Git(new("git checkout failed", $"git checkout -b {name} failed"), "checkout", "-b", name);
+            //using var repo = new Repository(repoPath);
+            //var branch = repo.CreateBranch(name);
 
-            Commands.Checkout(repo, branch);
+            //Commands.Checkout(repo, branch);
         }
 
         private async void Push()
@@ -170,7 +174,8 @@ namespace IhGit
                 return;
             }
 
-            await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin");
+            var current = GetBranchInfo(checkBoxStartOnSameVersion.Checked);
+            await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", current.Current);
             //using var repo = new Repository(repoPath);
             //PushOptions options = new()
             //{
@@ -332,19 +337,9 @@ namespace IhGit
 
             try
             {
+                await Git(new("checkout failed"), $"checkout", newBranch);
                 using var repo = new Repository(repoPath);
-                var branch = repo.Branches[newBranch];
-
-                if (branch is null)
-                {
-                    await Git(new("checkout failed"), $"checkout", "-b", newBranch);
-                    branch = repo.Branches[newBranch];
-                }
-
-                if (branch is null)
-                    return false;
-
-                return Commands.Checkout(repo, branch) is not null;
+                return repo.Branches[newBranch] is not null;
             }
             catch (Exception ex)
             {
