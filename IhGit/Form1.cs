@@ -396,6 +396,9 @@ namespace IhGit
                     return;
                 }
 
+                Log("Waiting 5s for git operations to complete");
+                await Task.Delay(TimeSpan.FromSeconds(5));
+
                 if (checkBoxDryRun.Checked)
                     Log("Warning, will not walk through each upmerge in dry-run");
 
