@@ -205,6 +205,8 @@ namespace IhGit
 
             if (!checkBoxUseCurrentBranch.Checked)
             {
+                Fetch();
+
                 if (!await SwitchBranch(info.NewOrigin))
                     return false;
 
