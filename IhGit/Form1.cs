@@ -161,7 +161,7 @@ namespace IhGit
             await Git(new("git checkout failed", $"git checkout -b {name} failed"), "checkout", "-b", name);
         }
 
-        private async void Push()
+        private async Task Push()
         {
             if (checkBoxDryRun.Checked)
             {
@@ -268,7 +268,7 @@ namespace IhGit
                     } while (HasConflicts());
                 }
             }
-            Push();
+            await Push();
             PullRequest();
             return true;
         }
@@ -365,9 +365,9 @@ namespace IhGit
             Fetch();
         }
 
-        private void buttonPush_Click(object sender, EventArgs e)
+        private async void buttonPush_Click(object sender, EventArgs e)
         {
-            Push();
+            await Push();
         }
 
         private async void buttonNewBranch_Click(object sender, EventArgs e)
