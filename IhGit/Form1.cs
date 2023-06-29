@@ -234,9 +234,18 @@ namespace IhGit
                             CommitOnSuccess = true,
                         };
                         Log("Cherry pick: " + commit);
-                        var c = repo.Lookup<Commit>(commit);
-                        var result = repo.CherryPick(c, c.Author, options);
-                        hasConflicts = result.Status == CherryPickStatus.Conflicts;
+                        try
+                        {
+                            var c = repo.Lookup<Commit>(commit);
+                            var result = repo.CherryPick(c, c.Author, options);
+                            hasConflicts = result.Status == CherryPickStatus.Conflicts;
+                        }
+                        catch (LibGit2SharpException ex)
+                        {
+                            Log(ex.Message);
+                            MessageBox.Show(ex.Message);
+                            return false;
+                        }
                     }
                 }
 
