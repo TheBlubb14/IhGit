@@ -161,6 +161,27 @@ namespace IhGit
             await Git(new("git checkout failed", $"git checkout -b {name} failed"), "checkout", "-b", name);
         }
 
+        private async Task<bool> CreateAndSwitchBranch(string repoPath, string newBranchName, string remoteBranchName)
+        {
+            using var repo = new Repository(repoPath);
+            if (repo.Branches[newBranchName] is null)
+            {
+                if (checkBoxDryRun.Checked)
+                {
+                    Log($"Dry run: git checkout -b {newBranchName} origin/{remoteBranchName}");
+                    return true;
+                }
+
+                // checkout a new branch from remote branch and switch to the new branch
+                return await Git(new("git checkout failed", $"git checkout -b {newBranchName} origin/{remoteBranchName} failed"), "checkout", "-b", newBranchName, $"origin/{remoteBranchName}");
+            }
+            else
+            {
+                // switch to new the branch
+                return await SwitchBranch(newBranchName);
+            }
+        }
+
         private async Task Push()
         {
             if (checkBoxDryRun.Checked)
@@ -207,10 +228,8 @@ namespace IhGit
             {
                 Fetch();
 
-                if (!await SwitchBranch(info.NewOrigin))
+                if (!await CreateAndSwitchBranch(repoPath, info.New, info.NewOrigin))
                     return false;
-
-                await CreateNewBranch(info.New);
             }
 
             foreach (var commit in commits)
