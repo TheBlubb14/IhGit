@@ -12,7 +12,12 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishReadyToRun>false</PublishReadyToRun>
+    <ApplicationIcon>github.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="github.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="AdysTech.CredentialManager" Version="2.6.0" />

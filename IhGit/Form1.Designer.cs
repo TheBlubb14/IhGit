@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             button1 = new Button();
             buttonClear = new Button();
             textBoxFeatureName = new TextBox();
@@ -345,12 +346,12 @@
             buttonOpenRepo.UseVisualStyleBackColor = true;
             buttonOpenRepo.Click += buttonOpenRepo_Click;
             // 
-            // checkBoxuseCurrentBranch
+            // checkBoxUseCurrentBranch
             // 
             checkBoxUseCurrentBranch.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             checkBoxUseCurrentBranch.AutoSize = true;
             checkBoxUseCurrentBranch.Location = new Point(478, 353);
-            checkBoxUseCurrentBranch.Name = "checkBoxuseCurrentBranch";
+            checkBoxUseCurrentBranch.Name = "checkBoxUseCurrentBranch";
             checkBoxUseCurrentBranch.Size = new Size(126, 19);
             checkBoxUseCurrentBranch.TabIndex = 30;
             checkBoxUseCurrentBranch.Text = "Use current branch";
@@ -391,6 +392,7 @@
             Controls.Add(textBoxFeatureName);
             Controls.Add(buttonClear);
             Controls.Add(button1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "IhGit";
             ResumeLayout(false);
