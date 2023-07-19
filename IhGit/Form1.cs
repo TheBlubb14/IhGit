@@ -173,7 +173,7 @@ namespace IhGit
                 }
 
                 // checkout a new branch from remote branch and switch to the new branch
-                return await Git(new("git checkout failed", $"git checkout -b {newBranchName} origin/{remoteBranchName} failed"), "checkout", "-b", newBranchName, $"origin/{remoteBranchName}");
+                return await Git(new("git checkout failed", $"git checkout -b {newBranchName} origin/{remoteBranchName} failed"), "checkout", "-b", newBranchName, $"origin/{remoteBranchName}", "--no-track");
             }
             else
             {
