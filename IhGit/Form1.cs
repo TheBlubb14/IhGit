@@ -509,8 +509,8 @@ namespace IhGit
                 return new BranchInfo(currentBranch,
                     newBranchName,
                     isStable,
-                    shouldBaseOnStable ? "stable" : currentDeploy ? $"deploy/v4.{originVersion}.0" : $"support/v4.{originVersion}",
-                    shouldBaseOnStable ? "stable" : nextDeploy ? $"deploy/v4.{version}.0": $"support/v4.{version}",
+                    shouldBaseOnStable ? "stable" : currentDeploy ? $"deploy/v4.{originVersion}" : $"support/v4.{originVersion}",
+                    shouldBaseOnStable ? "stable" : nextDeploy ? $"deploy/v4.{version}": $"support/v4.{version}",
                     shouldBaseOnStable ? "stable" : $"4.{version}") ;
             }
             catch (Exception ex)
