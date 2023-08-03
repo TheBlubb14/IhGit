@@ -59,6 +59,11 @@
             buttonGeneratePassword = new Button();
             buttonOpenRepo = new Button();
             checkBoxUseCurrentBranch = new CheckBox();
+            buttonOtabek = new Button();
+            label8 = new Label();
+            checkBoxDeploy = new CheckBox();
+            numericUpDownVersion = new NumericUpDown();
+            ((System.ComponentModel.ISupportInitialize)numericUpDownVersion).BeginInit();
             SuspendLayout();
             // 
             // button1
@@ -357,11 +362,54 @@
             checkBoxUseCurrentBranch.Text = "Use current branch";
             checkBoxUseCurrentBranch.UseVisualStyleBackColor = true;
             // 
+            // buttonOtabek
+            // 
+            buttonOtabek.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            buttonOtabek.Location = new Point(174, 368);
+            buttonOtabek.Name = "buttonOtabek";
+            buttonOtabek.Size = new Size(75, 23);
+            buttonOtabek.TabIndex = 31;
+            buttonOtabek.Text = "Otabek";
+            buttonOtabek.UseVisualStyleBackColor = true;
+            buttonOtabek.Click += buttonOtabek_Click;
+            // 
+            // label8
+            // 
+            label8.AutoSize = true;
+            label8.Location = new Point(13, 415);
+            label8.Name = "label8";
+            label8.Size = new Size(83, 15);
+            label8.TabIndex = 32;
+            label8.Text = "Max version 4.";
+            // 
+            // checkBoxDeploy
+            // 
+            checkBoxDeploy.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            checkBoxDeploy.AutoSize = true;
+            checkBoxDeploy.Location = new Point(151, 414);
+            checkBoxDeploy.Name = "checkBoxDeploy";
+            checkBoxDeploy.Size = new Size(140, 19);
+            checkBoxDeploy.TabIndex = 33;
+            checkBoxDeploy.Text = "Max version is deploy";
+            checkBoxDeploy.UseVisualStyleBackColor = true;
+            // 
+            // numericUpDownVersion
+            // 
+            numericUpDownVersion.Location = new Point(94, 413);
+            numericUpDownVersion.Name = "numericUpDownVersion";
+            numericUpDownVersion.Size = new Size(47, 23);
+            numericUpDownVersion.TabIndex = 34;
+            numericUpDownVersion.Value = new decimal(new int[] { 18, 0, 0, 0 });
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1140, 474);
+            Controls.Add(numericUpDownVersion);
+            Controls.Add(checkBoxDeploy);
+            Controls.Add(label8);
+            Controls.Add(buttonOtabek);
             Controls.Add(checkBoxUseCurrentBranch);
             Controls.Add(buttonOpenRepo);
             Controls.Add(buttonGeneratePassword);
@@ -395,6 +443,7 @@
             Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "IhGit";
+            ((System.ComponentModel.ISupportInitialize)numericUpDownVersion).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -431,5 +480,9 @@
         private Button buttonGeneratePassword;
         private Button buttonOpenRepo;
         private CheckBox checkBoxUseCurrentBranch;
+        private Button buttonOtabek;
+        private Label label8;
+        private CheckBox checkBoxDeploy;
+        private NumericUpDown numericUpDownVersion;
     }
 }

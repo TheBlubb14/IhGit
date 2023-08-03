@@ -14,8 +14,6 @@ namespace IhGit
 {
     public partial class Form1 : Form
     {
-        const int max_support_version = 17;
-
         private string repoPath => textBoxRepo.Text;
         private string userName => comboBoxUsername.Text;
         private string password => textBoxPassword.Text;
@@ -212,92 +210,107 @@ namespace IhGit
         private async void buttonUpmerge_Click(object sender, EventArgs e)
         {
             var commits = textBoxCommits.Text.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-
-            Fetch();
-            await UpmergeOne(commits);
+            try
+            {
+                Fetch();
+                await UpmergeOne(commits);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error during upmerge");
+            }
         }
 
         private async Task<bool> UpmergeOne(string[] commits)
         {
-            var info = GetBranchInfo(checkBoxStartOnSameVersion.Checked);
-
-            if (info is null)
-                return false;
-
-            if (!checkBoxUseCurrentBranch.Checked)
+            try
             {
-                Fetch();
+                var info = GetBranchInfo(checkBoxStartOnSameVersion.Checked);
 
-                if (!await CreateAndSwitchBranch(repoPath, info.New, info.NewOrigin))
+                if (info is null)
                     return false;
-            }
 
-            foreach (var commit in commits)
-            {
-                var hasConflicts = false;
-                if (HasConflicts())
+                if (!checkBoxUseCurrentBranch.Checked)
                 {
-                    hasConflicts = true;
+                    Fetch();
+
+                    if (!await CreateAndSwitchBranch(repoPath, info.New, info.NewOrigin))
+                        return false;
                 }
-                else
+
+                foreach (var commit in commits)
                 {
-                    if (checkBoxDryRun.Checked)
+                    var hasConflicts = false;
+                    if (HasConflicts())
                     {
-                        Log($"Dry run: git cherry-pick {commit}");
+                        hasConflicts = true;
                     }
                     else
                     {
-                        using var repo = new Repository(repoPath);
-                        var options = new CherryPickOptions()
+                        if (checkBoxDryRun.Checked)
                         {
-                            CommitOnSuccess = true,
-                        };
-                        Log("Cherry pick: " + commit);
-                        try
-                        {
-                            var c = repo.Lookup<Commit>(commit);
-                            var result = repo.CherryPick(c, c.Author, options);
-                            hasConflicts = result.Status == CherryPickStatus.Conflicts;
+                            Log($"Dry run: git cherry-pick {commit}");
                         }
-                        catch (LibGit2SharpException ex)
+                        else
                         {
-                            Log(ex.Message);
-                            MessageBox.Show(ex.Message);
-                            return false;
+                            using var repo = new Repository(repoPath);
+                            var options = new CherryPickOptions()
+                            {
+                                CommitOnSuccess = true,
+                            };
+                            Log("Cherry pick: " + commit);
+                            try
+                            {
+                                var c = repo.Lookup<Commit>(commit);
+                                var result = repo.CherryPick(c, c.Author, options);
+                                hasConflicts = result.Status == CherryPickStatus.Conflicts;
+                            }
+                            catch (LibGit2SharpException ex)
+                            {
+                                Log(ex.Message);
+                                MessageBox.Show(ex.Message);
+                                return false;
+                            }
                         }
                     }
-                }
 
-                if (hasConflicts)
-                {
-                    do
+                    if (hasConflicts)
                     {
-                        using var repo = new Repository(repoPath);
-                        var conflicts = repo.Index.Conflicts.Cast<Conflict>();
-                        var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x.Ancestor.Path));
-                        var mbox = MessageBox.Show("Waiting for merge conflicts to be solved.." + files, "cherry pick failed", MessageBoxButtons.CancelTryContinue);
-
-                        switch (mbox)
+                        do
                         {
-                            case DialogResult.TryAgain:
-                                // try again
-                                break;
+                            using var repo = new Repository(repoPath);
+                            var conflicts = repo.Index.Conflicts.Cast<Conflict>();
+                            var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x.Ancestor.Path));
+                            var mbox = MessageBox.Show("Waiting for merge conflicts to be solved.." + files, "cherry pick failed", MessageBoxButtons.CancelTryContinue);
 
-                            case DialogResult.Continue:
-                                // cherry pick continue
-                                await Git(new("add . failed", ShowDialog: false), "add", ".");
-                                await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
-                                break;
+                            switch (mbox)
+                            {
+                                case DialogResult.TryAgain:
+                                    // try again
+                                    break;
 
-                            case DialogResult.Cancel:
-                            default:
-                                return false;
-                        }
-                    } while (HasConflicts());
+                                case DialogResult.Continue:
+                                    // cherry pick continue
+                                    await Git(new("add . failed", ShowDialog: false), "add", ".");
+                                    await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
+                                    break;
+
+                                case DialogResult.Cancel:
+                                default:
+                                    return false;
+                            }
+                        } while (HasConflicts());
+                    }
                 }
+                await Push();
+                PullRequest();
             }
-            await Push();
-            PullRequest();
+
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error during upmerge");
+                return false;
+            }
             return true;
         }
 
@@ -479,7 +492,9 @@ namespace IhGit
                     }
                 }
 
-                var shouldBaseOnStable = isStable || version > max_support_version;
+                var maxVersion = (int)numericUpDownVersion.Value;
+
+                var shouldBaseOnStable = isStable || version > maxVersion;
                 var originVersion = version - (doNotCountVersionUp ? 0 : 1);
 
                 var featureName = textBoxFeatureName.Text?.Trim();
@@ -489,12 +504,14 @@ namespace IhGit
                 var newBranchName = shouldBaseOnStable ? "work" : $"patch/v4.{version}";
                 newBranchName += $"/{featureName}";
 
+                var currentDeploy = originVersion == maxVersion && checkBoxDeploy.Checked;
+                var nextDeploy = version == maxVersion && checkBoxDeploy.Checked;
                 return new BranchInfo(currentBranch,
                     newBranchName,
                     isStable,
-                    shouldBaseOnStable ? "stable" : $"support/v4.{originVersion}",
-                    shouldBaseOnStable ? "stable" : $"support/v4.{version}",
-                    shouldBaseOnStable ? "stable" : $"4.{version}");
+                    shouldBaseOnStable ? "stable" : currentDeploy ? $"deploy/v4.{originVersion}" : $"support/v4.{originVersion}",
+                    shouldBaseOnStable ? "stable" : nextDeploy ? $"deploy/v4.{version}": $"support/v4.{version}",
+                    shouldBaseOnStable ? "stable" : $"4.{version}") ;
             }
             catch (Exception ex)
             {
@@ -518,6 +535,11 @@ namespace IhGit
         {
             comboBoxUsername.SelectedItem = "as-spikechan";
             textBoxRepo.Text = "C:\\Users\\Spike\\Documents\\Github\\PaxControl";
+        }
+        private void buttonOtabek_Click(object sender, EventArgs e)
+        {
+            comboBoxUsername.SelectedItem = "otabekgb";
+            textBoxRepo.Text = "D:\\Airsphere-Code\\PaxControl";
         }
 
         private void buttonGeneratePassword_Click(object sender, EventArgs e)
