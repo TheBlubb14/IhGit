@@ -427,7 +427,7 @@ namespace IhGit
                 Fetch();
                 info = GetBranchInfo(checkBoxStartOnSameVersion.Checked);
 
-                if (info is null)
+                if (info is null || info.IsStable)
                     break;
 
                 //if (!SwitchBranch(info.NewOrigin))
