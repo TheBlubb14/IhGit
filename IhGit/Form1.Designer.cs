@@ -399,7 +399,7 @@
             numericUpDownVersion.Name = "numericUpDownVersion";
             numericUpDownVersion.Size = new Size(47, 23);
             numericUpDownVersion.TabIndex = 34;
-            numericUpDownVersion.Value = new decimal(new int[] { 18, 0, 0, 0 });
+            numericUpDownVersion.Value = new decimal(new int[] { 19, 0, 0, 0 });
             // 
             // Form1
             // 

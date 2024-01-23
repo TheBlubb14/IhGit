@@ -501,17 +501,20 @@ namespace IhGit
                 if (string.IsNullOrWhiteSpace(featureName))
                     return null;
 
-                var newBranchName = shouldBaseOnStable ? "work" : $"patch/v4.{version}";
+                var nextDeploy = version == maxVersion && checkBoxDeploy.Checked;
+                // deploy branch is always ending with .0, e.g. deploy/v4.19.0, so we need to append .0 at the end for deploy branch upmerge
+                var nextDeployFeatureVersion = nextDeploy ? ".0" : "";
+
+                var newBranchName = shouldBaseOnStable ? "work" : $"patch/v4.{version}{nextDeployFeatureVersion}";
                 newBranchName += $"/{featureName}";
 
                 var currentDeploy = originVersion == maxVersion && checkBoxDeploy.Checked;
-                var nextDeploy = version == maxVersion && checkBoxDeploy.Checked;
                 return new BranchInfo(currentBranch,
                     newBranchName,
                     isStable,
-                    shouldBaseOnStable ? "stable" : currentDeploy ? $"deploy/v4.{originVersion}" : $"support/v4.{originVersion}",
-                    shouldBaseOnStable ? "stable" : nextDeploy ? $"deploy/v4.{version}": $"support/v4.{version}",
-                    shouldBaseOnStable ? "stable" : $"4.{version}") ;
+                    shouldBaseOnStable ? "stable" : currentDeploy ? $"deploy/v4.{originVersion}{nextDeployFeatureVersion}" : $"support/v4.{originVersion}",
+                    shouldBaseOnStable ? "stable" : nextDeploy ? $"deploy/v4.{version}{nextDeployFeatureVersion}" : $"support/v4.{version}",
+                    shouldBaseOnStable ? "stable" : $"4.{version}{nextDeployFeatureVersion}");
             }
             catch (Exception ex)
             {
