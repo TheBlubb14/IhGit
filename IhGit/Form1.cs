@@ -92,7 +92,7 @@ namespace IhGit
 
         private void Log(string m)
         {
-            textBoxOutput.Invoke(() => textBoxOutput.Text += m + Environment.NewLine);
+            textBoxOutput.Invoke(() => textBoxOutput.AppendText(m + Environment.NewLine));
         }
 
         private void Fetch()
