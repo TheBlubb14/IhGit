@@ -52,6 +52,9 @@
                         Visibility="{Binding ShowZohoButton, Converter={StaticResource BooleanToVisibilityConverter}}"
                         Content="Zoho"
                         Margin="8 0" />
+                <Button Command="{Binding UpMergeCommand}"
+                        Content="Upmerge"
+                        Margin="8 0" />
             </StackPanel>
 
             <TextBox VerticalAlignment="Center"
