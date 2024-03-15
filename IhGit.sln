@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33513.286
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IhGit", "IhGit\IhGit.csproj", "{6C5012BC-35E4-4A4D-ACDA-8843883104DC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IhGit", "IhGit\IhGit.csproj", "{6C5012BC-35E4-4A4D-ACDA-8843883104DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IhGitWpf", "IhGitWpf\IhGitWpf.csproj", "{ED860AFB-F1EF-4A87-A601-326B98A8F75D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{6C5012BC-35E4-4A4D-ACDA-8843883104DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6C5012BC-35E4-4A4D-ACDA-8843883104DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6C5012BC-35E4-4A4D-ACDA-8843883104DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED860AFB-F1EF-4A87-A601-326B98A8F75D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED860AFB-F1EF-4A87-A601-326B98A8F75D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED860AFB-F1EF-4A87-A601-326B98A8F75D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED860AFB-F1EF-4A87-A601-326B98A8F75D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
