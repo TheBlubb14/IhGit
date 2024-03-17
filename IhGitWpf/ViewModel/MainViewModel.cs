@@ -18,187 +18,33 @@ using System.Web;
 using System.Windows;
 using Repository = LibGit2Sharp.Repository;
 using System.ComponentModel;
-using System.Collections.Specialized;
+using System.IO;
+using System.Windows.Threading;
 
 namespace IhGitWpf.ViewModel;
 
-public class ObservableCollectionEx<T> : ObservableCollection<T>, INotifyPropertyChanged where T : INotifyPropertyChanged
-{
-    public ObservableCollectionEx() : base()
-    {
-        Init();
-    }
-
-    public ObservableCollectionEx(IEnumerable<T> collection) : base(collection)
-    {
-        Init();
-    }
-
-    private void Init()
-    {
-        CollectionChanged += OnCollectionChanged;
-        foreach (var item in Items)
-        {
-            if (item is not null)
-                item.PropertyChanged += ItemOnPropertyChanged;
-        }
-    }
-
-    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.NewItems is not null)
-        {
-            foreach (T item in e.NewItems)
-            {
-                if (item is not null)
-                    item.PropertyChanged += ItemOnPropertyChanged;
-            }
-        }
-
-        if (e.OldItems is not null)
-        {
-            foreach (T item in e.OldItems)
-            {
-                if (item is not null)
-                    item.PropertyChanged -= ItemOnPropertyChanged;
-            }
-        }
-    }
-
-    private void ItemOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        OnPropertyChanged(e);
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-    }
-}
-
-public enum BranchType
-{
-    unknown,
-    support,
-    stable,
-    deploy,
-}
-
-public partial class BranchVersion : ObservableObject
-{
-    [ObservableProperty]
-    private bool isSelected = true;
-
-    [ObservableProperty]
-    private bool isCherryPicked;
-
-    [ObservableProperty]
-    private BranchType branchType;
-
-    [ObservableProperty]
-    private int major;
-
-    [ObservableProperty]
-    private int minor;
-
-    public BranchVersion(string branchVersion)
-    {
-        var matches = BranchRegex().Matches(branchVersion);
-        var groups = matches.FirstOrDefault()?.Groups;
-
-        if ((groups?.Count) != 3)
-        {
-            MessageBox.Show(branchVersion, "Base branch regex doesnt match");
-            return;
-        }
-
-        var branch = groups[0].Value;
-        var branchName = groups[1].Value;
-
-        var versionNumber = groups[2].Value?.Trim('v');
-        var split = versionNumber.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        if (int.TryParse(split[0], out major) && int.TryParse(split[1], out var minor))
-        {
-            Major = major;
-            Minor = minor;
-        }
-
-        BranchType = branchName switch
-        {
-            "support" => BranchType.support,
-            "deploy" => BranchType.deploy,
-            "stable" => BranchType.stable,
-            _ => BranchType.unknown,
-        };
-    }
-
-    public BranchVersion(int major, int minor, BranchType branchType = BranchType.support)
-    {
-        BranchType = branchType;
-        Major = major;
-        Minor = minor;
-    }
-
-    public string GetBranchNameForChanges(string featureName) => BranchType switch
-    {
-        BranchType.support => $"patch/v{Major}.{Minor}/{featureName}",
-        BranchType.deploy => $"patch/v{Major}.{Minor}.0/{featureName}",
-        BranchType.stable => $"work/{featureName}",
-        _ => "?"
-    };
-
-    public string GetRemoteBranchName() => BranchType switch
-    {
-        BranchType.support => $"support/v{Major}.{Minor}",
-        BranchType.deploy => $"deploy/v{Major}.{Minor}.0",
-        BranchType.stable => "stable",
-        _ => "?"
-    };
-
-    public override string ToString()
-        => GetRemoteBranchName();
-
-    [GeneratedRegex("^([A-Za-z]*)\\/*(v{0,1}[\\d\\.]*)$")]
-    private static partial Regex BranchRegex();
-}
-
-public partial class Commit : ObservableObject
-{
-    [ObservableProperty]
-    private PullRequestCommit value;
-
-    [ObservableProperty]
-    private bool isSelected = true;
-
-    [ObservableProperty]
-    private string title;
-
-    public Commit(PullRequestCommit c)
-    {
-        Value = c;
-        var s = c.Commit.Message.Split("\n")[0].Trim();
-        Title = s;
-    }
-}
-
 public sealed partial class MainViewModel : ObservableRecipient
 {
-    [ObservableProperty]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
     private int maxMajorVersion = 4;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
     private int maxMinorVersion = 19;
 
     [ObservableProperty]
     private bool maxVersionIsDeploy = true;
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(LoadPrCommand))]
-    private string prNumber;
+    private string prNumber = "";
 
     [ObservableProperty]
-    private PullRequest pr;
+    private PullRequest? pr = null;
 
     [ObservableProperty]
-    private string title;
+    private string title = "";
 
     [ObservableProperty]
-    private string body;
+    private string body = "";
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
     private ObservableCollectionEx<Commit> commits = [];
@@ -210,7 +56,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     private bool showZohoButton;
 
     [ObservableProperty]
-    private ObservableCollection<string> logs = new();
+    private ObservableCollection<string> logs = [];
 
     private string zohoUrl = "";
 
@@ -218,12 +64,18 @@ public sealed partial class MainViewModel : ObservableRecipient
     private string userName = "TheBlubb14";
 
     [ObservableProperty]
-    private string password;
+    private string password = "";
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(StatusCommand)), NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
     private string repoPath = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
 
-    private string FeatureName => "myFeaturew";
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
+    private string featureName = "myFeaturew";
+
+    private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+
+    [GeneratedRegex("I(\\d*)")]
+    private static partial Regex ZohoTicketRegex();
 
     public MainViewModel()
     {
@@ -234,6 +86,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
     }
 
+    #region Collections Notify Hack
     partial void OnVersionsToConsiderChanging(ObservableCollectionEx<BranchVersion>? oldValue, ObservableCollectionEx<BranchVersion> newValue)
     {
         if (oldValue is not null)
@@ -269,6 +122,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         UpMergeCommand.NotifyCanExecuteChanged();
     }
+    #endregion
 
     private bool IsPrNumberNumber() => int.TryParse(PrNumber, out _);
 
@@ -278,7 +132,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (!int.TryParse(PrNumber, out var prNum))
             return;
 
-        VersionsToConsider = [];
+        ClearUi();
 
         var client = new GitHubClient(new ProductHeaderValue("IhGit"));
         var tokenAuth = new Octokit.Credentials("");
@@ -291,7 +145,17 @@ public sealed partial class MainViewModel : ObservableRecipient
         Body = Pr.Body;
         var a = await client.PullRequest.Commits(repoId, prNum);
         var b = a.Select(x => new Commit(x)).ToArray();
-        Commits = [..b];
+        Commits = [.. b];
+
+        var index = Pr.Head.Ref.LastIndexOf('/');
+        if (index == -1 || index == Pr.Head.Ref.Length - 1)
+        {
+            FeatureName = Pr.Head.Ref;
+        }
+        else
+        {
+            FeatureName = Pr.Head.Ref[(index + 1)..];
+        }
 
         var regex = ZohoTicketRegex().Match(Title);
         ShowZohoButton = regex.Success;
@@ -302,8 +166,6 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
 
         var prBranchVersion = new BranchVersion(Pr.Base.Ref);
-
-
 
         switch (prBranchVersion.BranchType)
         {
@@ -337,6 +199,17 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
     }
 
+    private void ClearUi()
+    {
+        Pr = null;
+        Title = "";
+        Body = "";
+        Commits = [];
+        VersionsToConsider = [];
+        FeatureName = "";
+        zohoUrl = "";
+    }
+
     [RelayCommand]
     private void OpenZoho()
     {
@@ -350,11 +223,20 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand]
     private void ClearLogs()
     {
-        Logs.Clear();
+        dispatcher.Invoke(Logs.Clear);
     }
 
     private bool CanUpmerge()
     {
+        if (string.IsNullOrWhiteSpace(FeatureName))
+            return false;
+
+        if (MaxMajorVersion < 4 || MaxMinorVersion < 0)
+            return false;
+
+        if (!CanStatus())
+            return false;
+
         if (VersionsToConsider is null || VersionsToConsider.Count == 0 || Commits is null || Commits.Count == 0)
             return false;
 
@@ -392,9 +274,6 @@ public sealed partial class MainViewModel : ObservableRecipient
             }
         }
     }
-
-    [GeneratedRegex("I(\\d*)")]
-    private static partial Regex ZohoTicketRegex();
 
     private CredentialsHandler? GetCredentialsHandler()
     {
@@ -445,8 +324,9 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     private void Log(string msg)
     {
-        Logs.Add(msg);
+        dispatcher.Invoke(() => Logs.Add($"[{DateTime.Now:T}] {msg}"));
     }
+
     private async Task<bool> CreateAndSwitchBranch(string newBranchName, string remoteBranchName)
     {
         using var repo = new Repository(RepoPath);
@@ -554,6 +434,17 @@ public sealed partial class MainViewModel : ObservableRecipient
         return true;
     }
 
+    [RelayCommand(CanExecute = nameof(CanStatus))]
+    private async Task Status()
+    {
+        await Git(new("git status failed"), "status");
+    }
+
+    private bool CanStatus()
+    {
+        return RepoPath is not null && Directory.Exists(RepoPath);
+    }
+
     private bool HasConflicts()
     {
         using var repo = new Repository(RepoPath);
@@ -651,5 +542,4 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName().ToString());
     }
-
 }
