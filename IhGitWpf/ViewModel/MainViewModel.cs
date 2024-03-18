@@ -70,7 +70,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     private string repoPath = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
-    private string featureName = "myFeaturew";
+    private string featureName = "";
 
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
 

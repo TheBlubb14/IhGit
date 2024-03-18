@@ -22,7 +22,7 @@
     </behavior:Interaction.Triggers>
 
     <Grid Margin="16"
-          ShowGridLines="True">
+          ShowGridLines="False">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="1*" />
             <ColumnDefinition Width="16" />
