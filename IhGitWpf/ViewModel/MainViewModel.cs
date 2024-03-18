@@ -484,11 +484,10 @@ public sealed partial class MainViewModel : ObservableRecipient
         return s;
     }
 
-    private BranchVersion CurrentBranchName()
+    private string CurrentBranchName()
     {
         using var repo = new Repository(RepoPath);
-        var branchName = repo.Head.FriendlyName; // support/v4.17
-        return new BranchVersion(branchName);
+        return repo.Head.FriendlyName; // support/v4.17
     }
 
     private async Task CreateNewBranch(string name)
