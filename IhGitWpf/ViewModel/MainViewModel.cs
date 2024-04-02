@@ -20,6 +20,7 @@ using Repository = LibGit2Sharp.Repository;
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Threading;
+using static System.Net.WebRequestMethods;
 
 namespace IhGitWpf.ViewModel;
 
@@ -32,7 +33,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     private int maxMinorVersion = 19;
 
     [ObservableProperty]
-    private bool maxVersionIsDeploy = true;
+    private bool maxVersionIsDeploy = false;
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(LoadPrCommand))]
     private string prNumber = "";
@@ -172,15 +173,19 @@ public sealed partial class MainViewModel : ObservableRecipient
             case BranchType.support:
                 List<BranchVersion> result = [];
 
-                if (prBranchVersion.Minor + 1 <= MaxMinorVersion)
+                if (prBranchVersion.Minor < MaxMinorVersion)
                 {
                     // Count up all support versions
                     for (int i = prBranchVersion.Minor + 1; i < MaxMinorVersion; i++)
                         result.Add(new(prBranchVersion.Major, i));
                 }
 
-                // Add max version
-                result.Add(new(prBranchVersion.Major, MaxMinorVersion, MaxVersionIsDeploy ? BranchType.deploy : BranchType.support));
+                // When we are on 4.19 already and max version is 4.19, then dont add 4.19
+                if (prBranchVersion.Minor < MaxMinorVersion)
+                {
+                    // Add max version
+                    result.Add(new(prBranchVersion.Major, MaxMinorVersion, MaxVersionIsDeploy ? BranchType.deploy : BranchType.support));
+                }
 
                 // Add stable
                 result.Add(new(0, 0, BranchType.stable));
@@ -382,7 +387,48 @@ public sealed partial class MainViewModel : ObservableRecipient
                     Log("Cherry pick: " + commit);
                     try
                     {
-                        var c = repo.Lookup<LibGit2Sharp.Commit>(commit.Value.Sha);
+                        var sha = commit.Value.Sha;
+                        var c = repo.Lookup<LibGit2Sharp.Commit>(sha);
+
+                        if (c is null)
+                        {
+                            do
+                            {
+                                if (Pr is null || Pr.ClosedAt is null)
+                                {
+                                    MessageBox.Show($"Commit: {sha}", "Commit doesn't exist");
+                                }
+                                else
+                                {
+                                    var mbox = MessageBox.Show(
+                                        $"It seems you PR was closed at {Pr.ClosedAt.Value.ToLocalTime()}.\r\n" +
+                                        $"You need to restore the branch\r\n" +
+                                        $"Commit: {sha}\r\n\r\n" +
+                                        $"Yes: try to find commit again\r\n" +
+                                        $"No: Skip cherry-pick commit\r\n" +
+                                        $"Cancel: Abort",
+                                        "Commit doesn't exist", MessageBoxButton.YesNoCancel);
+
+                                    if (mbox == MessageBoxResult.Yes)
+                                    {
+                                        c = repo.Lookup<LibGit2Sharp.Commit>(sha);
+                                    }
+                                    else if (mbox == MessageBoxResult.No)
+                                    {
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        return false;
+                                    }
+                                }
+                            }
+                            while (c is null);
+                        }
+
+                        if (c is null)
+                            continue;
+
                         var result = repo.CherryPick(c, c.Author, options);
                         hasConflicts = result.Status == CherryPickStatus.Conflicts;
                     }
