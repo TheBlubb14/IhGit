@@ -20,4 +20,7 @@ public partial class Commit : ObservableObject
         var s = c.Commit.Message.Split("\n")[0].Trim();
         Title = s;
     }
+
+    public override string ToString()
+        => Value?.Sha ?? Title;
 }
