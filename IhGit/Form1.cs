@@ -477,7 +477,7 @@ namespace IhGit
                 }
                 else
                 {
-                    var supportMatch = Regex.Match(currentBranchSplitted[1], "v4.(1\\d)");
+                    var supportMatch = Regex.Match(currentBranchSplitted[1], "v4.(\\d\\d)");
                     if (supportMatch.Success)
                     {
                         version = int.Parse(supportMatch.Groups[1].Value) + 1;
