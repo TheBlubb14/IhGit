@@ -67,6 +67,9 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty]
     private string password = "";
 
+    [ObservableProperty]
+    private string gitHubToken = "";
+
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(StatusCommand)), NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
     private string repoPath = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
 
@@ -136,7 +139,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         ClearUi();
 
         var client = new GitHubClient(new ProductHeaderValue("IhGit"));
-        var tokenAuth = new Octokit.Credentials("");
+        var tokenAuth = new Octokit.Credentials(GitHubToken);
         client.Credentials = tokenAuth;
 
         //var all = await client.Repository.GetAllForOrg("airsphere-gmbh");
