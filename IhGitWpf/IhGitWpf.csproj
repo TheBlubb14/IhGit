@@ -6,6 +6,10 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>github.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -13,16 +17,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="github.ico" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Include="github.ico" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Model\" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />

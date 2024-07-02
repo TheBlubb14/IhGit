@@ -10,8 +10,7 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
-    <PublishReadyToRun>false</PublishReadyToRun>
+    <DebugType>embedded</DebugType>
     <ApplicationIcon>github.ico</ApplicationIcon>
   </PropertyGroup>
 
