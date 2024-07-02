@@ -202,16 +202,25 @@
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <TextBox Grid.Row="0"
+                <PasswordBox Grid.Row="0"
+                             Grid.Column="0"
+                             Grid.ColumnSpan="2"
+                             VerticalAlignment="Center"
+                             materialDesign:HintAssist.Hint="GitHub Token"
+                             materialDesign:TextFieldAssist.HasClearButton="True"
+                             Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
+                             materialDesign:PasswordBoxAssist.Password="{Binding GitHubToken, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
+                <TextBox Grid.Row="1"
                          Grid.Column="0"
                          VerticalAlignment="Center"
                          materialDesign:HintAssist.Hint="Username"
                          materialDesign:TextFieldAssist.HasClearButton="True"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
                          Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
-                <PasswordBox Grid.Row="0"
+                <PasswordBox Grid.Row="1"
                              Grid.Column="1"
                              VerticalAlignment="Center"
                              materialDesign:HintAssist.Hint="Password"
@@ -221,7 +230,7 @@
 
                 <StackPanel Grid.Column="0"
                             Grid.ColumnSpan="999"
-                            Grid.Row="1">
+                            Grid.Row="2">
                     <TextBox VerticalAlignment="Center"
                              materialDesign:HintAssist.Hint="Repo Path"
                              materialDesign:TextFieldAssist.HasClearButton="True"
