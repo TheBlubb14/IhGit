@@ -258,7 +258,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         {
             var version = VersionsToConsider[i];
 
-            if (version.IsCherryPicked || version.IsCherryPicked)
+            if (version.IsCherryPicked || version.IsCherryPicked || !version.IsSelected)
                 continue;
 
             var success = await UpmergeOne(version);
