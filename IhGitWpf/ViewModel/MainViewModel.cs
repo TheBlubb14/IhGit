@@ -20,17 +20,27 @@ using Repository = LibGit2Sharp.Repository;
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Threading;
-using static System.Net.WebRequestMethods;
+using IhGitWpf.Properties;
 
 namespace IhGitWpf.ViewModel;
 
 public sealed partial class MainViewModel : ObservableRecipient
 {
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
-    private int maxMajorVersion = 4;
+    private int maxMajorVersion = Settings.Default.MaxMajorVersion;
+
+    partial void OnMaxMajorVersionChanged(int value)
+    {
+        Settings.Default.MaxMajorVersion = value;
+    }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
-    private int maxMinorVersion = 19;
+    private int maxMinorVersion = Settings.Default.MaxMinorVersion;
+
+    partial void OnMaxMinorVersionChanged(int value)
+    {
+        Settings.Default.MaxMinorVersion = value;
+    }
 
     [ObservableProperty]
     private bool maxVersionIsDeploy = false;
@@ -62,16 +72,36 @@ public sealed partial class MainViewModel : ObservableRecipient
     private string zohoUrl = "";
 
     [ObservableProperty]
-    private string userName = "TheBlubb14";
+    private string userName = Settings.Default.UserName;
+
+    partial void OnUserNameChanged(string value)
+    {
+        Settings.Default.UserName = value;
+    }
 
     [ObservableProperty]
-    private string password = "";
+    private string password = Settings.Default.Password;
+
+    partial void OnPasswordChanged(string value)
+    {
+        Settings.Default.Password = value;
+    }
 
     [ObservableProperty]
-    private string gitHubToken = "";
+    private string gitHubToken = Settings.Default.GitHubToken;
+    
+    partial void OnGitHubTokenChanged(string value)
+    {
+        Settings.Default.GitHubToken = value;
+    }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(StatusCommand)), NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
-    private string repoPath = "C:\\Dev\\Projects\\GitHub\\paxcontrol";
+    private string repoPath = Settings.Default.RepoPath;
+
+    partial void OnRepoPathChanged(string value)
+    {
+        Settings.Default.RepoPath = value;
+    }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
     private string featureName = "";
@@ -562,7 +592,7 @@ public sealed partial class MainViewModel : ObservableRecipient
                     .WithWorkingDirectory(RepoPath);
                 await cmd.ExecuteAsync();
             }
-            catch (CommandExecutionException ex)
+            catch (CommandExecutionException)
             {
                 if (!errorInfo.ShowDialog)
                     return false;

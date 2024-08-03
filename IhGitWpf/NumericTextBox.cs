@@ -24,7 +24,7 @@ public class NumericTextBox : TextBox
     }
     protected override void OnPreviewTextInput(TextCompositionEventArgs e)
     {
-        e.Handled = !int.TryParse(Text, NumberStyles.Integer, CultureInfo.CurrentUICulture, out _);
+        e.Handled = !int.TryParse(e.Text, NumberStyles.Integer, CultureInfo.CurrentUICulture, out _);
 
         base.OnPreviewTextInput(e);
     }
