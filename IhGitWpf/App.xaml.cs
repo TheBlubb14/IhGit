@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Windows;
+using IhGitWpf.Properties;
 
 namespace IhGitWpf
 {
@@ -32,6 +33,12 @@ namespace IhGitWpf
             services.AddSingleton<MainViewModel>();
 
             return services.BuildServiceProvider();
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            Settings.Default.Save();
+            base.OnExit(e);
         }
     }
 }
