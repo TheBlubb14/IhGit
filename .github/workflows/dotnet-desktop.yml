@@ -30,3 +30,9 @@ jobs:
         with:
           name: IhGit
           path: /output/no-self-contained/*.exe
+
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: /output/no-self-contained/*.exe
+          tag: 1.0.0
+          allowUpdates: true
