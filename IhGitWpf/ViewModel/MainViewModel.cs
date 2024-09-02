@@ -21,6 +21,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows.Threading;
 using IhGitWpf.Properties;
+using System.Windows.Data;
+using System.Threading.Channels;
 
 namespace IhGitWpf.ViewModel;
 
@@ -50,6 +52,17 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     [ObservableProperty]
     private PullRequest? pr = null;
+
+    [ObservableProperty]
+    private ObservableCollectionEx<Reviewer> reviewers = [];
+
+    [ObservableProperty]
+    private string reviewerFilter = "";
+
+    partial void OnReviewerFilterChanged(string value)
+    {
+        this.reviewerView?.Refresh();
+    }
 
     [ObservableProperty]
     private string title = "";
@@ -89,7 +102,7 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     [ObservableProperty]
     private string gitHubToken = Settings.Default.GitHubToken;
-    
+
     partial void OnGitHubTokenChanged(string value)
     {
         Settings.Default.GitHubToken = value;
@@ -107,6 +120,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     private string featureName = "";
 
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+    private ListCollectionView reviewerView;
 
     [GeneratedRegex("I(\\d*)")]
     private static partial Regex ZohoTicketRegex();
@@ -173,6 +187,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         client.Credentials = tokenAuth;
 
         //var all = await client.Repository.GetAllForOrg("airsphere-gmbh");
+
         const long repoId = 194316446;
         Pr = await client.PullRequest.Get(repoId, prNum);
         Title = Pr.Title;
@@ -180,6 +195,25 @@ public sealed partial class MainViewModel : ObservableRecipient
         var a = await client.PullRequest.Commits(repoId, prNum);
         var b = a.Select(x => new Commit(x)).ToArray();
         Commits = [.. b];
+
+        var orgaUsers = await client.Organization.Member.GetAll("airsphere-gmbh");
+
+        var requestedReviews = await client.PullRequest.ReviewRequest.Get(repoId, prNum);
+        var reviews = await client.PullRequest.Review.GetAll(repoId, prNum);
+
+        var allReviewers = Enumerable.Concat(requestedReviews.Users, reviews.Select(x => x.User)).Select(x => new Reviewer(x)).Distinct();
+
+        Reviewers = [.. orgaUsers.Select(x =>
+        {
+            var reviewer = new Reviewer(x);
+            reviewer.IsSelected = allReviewers.Contains(reviewer);
+            return reviewer;
+        })];
+
+        reviewerView = (ListCollectionView)CollectionViewSource.GetDefaultView(Reviewers);
+        reviewerView.IsLiveSorting = true;
+        reviewerView.SortDescriptions.Add(new(nameof(Reviewer.IsSelected), ListSortDirection.Descending));
+        reviewerView.Filter = FilterReviewers;
 
         var index = Pr.Head.Ref.LastIndexOf('/');
         if (index == -1 || index == Pr.Head.Ref.Length - 1)
@@ -237,6 +271,14 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
     }
 
+    private bool FilterReviewers(object obj)
+    {
+        if (string.IsNullOrWhiteSpace(ReviewerFilter))
+            return true;
+
+        return obj is Reviewer reviewer && reviewer.ToString().Contains(ReviewerFilter, StringComparison.OrdinalIgnoreCase);
+    }
+
     private void ClearUi()
     {
         Pr = null;
@@ -246,6 +288,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         VersionsToConsider = [];
         FeatureName = "";
         zohoUrl = "";
+        Reviewers.Clear();
     }
 
     [RelayCommand]
