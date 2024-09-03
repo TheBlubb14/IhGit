@@ -22,7 +22,6 @@ using System.IO;
 using System.Windows.Threading;
 using IhGitWpf.Properties;
 using System.Windows.Data;
-using System.Threading.Channels;
 
 namespace IhGitWpf.ViewModel;
 
@@ -279,7 +278,8 @@ public sealed partial class MainViewModel : ObservableRecipient
         return obj is Reviewer reviewer && reviewer.ToString().Contains(ReviewerFilter, StringComparison.OrdinalIgnoreCase);
     }
 
-    private void ClearUi()
+    [RelayCommand]
+    private void ClearUi(bool clearAll = false)
     {
         Pr = null;
         Title = "";
@@ -289,6 +289,11 @@ public sealed partial class MainViewModel : ObservableRecipient
         FeatureName = "";
         zohoUrl = "";
         Reviewers.Clear();
+
+        if (clearAll)
+        {
+            PrNumber = "";
+        }
     }
 
     [RelayCommand]

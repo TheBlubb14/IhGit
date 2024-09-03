@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:s="clr-namespace:System;assembly=netstandard"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:behavior="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:octo="clr-namespace:Octokit;assembly=Octokit"
@@ -71,6 +72,13 @@
                     <Button Command="{Binding UpMergeCommand}"
                             Content="Upmerge"
                             Margin="8 0" />
+                    <Button Command="{Binding ClearUiCommand}"
+                            Content="Clear"
+                            Margin="8 0">
+                        <Button.CommandParameter>
+                            <s:Boolean>True</s:Boolean>
+                        </Button.CommandParameter>
+                    </Button>
                 </StackPanel>
 
                 <TextBox VerticalAlignment="Center"
@@ -93,6 +101,7 @@
                          materialDesign:HintAssist.Hint="Filter Reviewer"
                          Style="{StaticResource MaterialDesignTextBox}"
                          materialDesign:TextFieldAssist.HasClearButton="True"
+                         Visibility="{Binding Reviewers.Count, Converter={StaticResource NotZeroToVisibilityConverter}}"
                          Text="{Binding ReviewerFilter, UpdateSourceTrigger=PropertyChanged}" />
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Margin="12 0"
@@ -140,6 +149,7 @@
                 </ScrollViewer>
                 <Border Margin="0 12"
                         Height="1"
+                        Visibility="{Binding Reviewers.Count, Converter={StaticResource NotZeroToVisibilityConverter}}"
                         Background="{DynamicResource MaterialDesignLightSeparatorBackground}" />
             </StackPanel>
 
