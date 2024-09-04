@@ -14,7 +14,6 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Web;
 using System.Windows;
 using Repository = LibGit2Sharp.Repository;
 using System.ComponentModel;
@@ -27,7 +26,9 @@ namespace IhGitWpf.ViewModel;
 
 public sealed partial class MainViewModel : ObservableRecipient
 {
-    private const long repoId = 194316446;
+    private const long REPO_ID = 194316446;
+    private const string DOWNMERGE_LABEL = "downmerge";
+    private const string UPMERGE_LABEL = "upmerge";
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
     private int maxMajorVersion = Settings.Default.MaxMajorVersion;
@@ -196,10 +197,9 @@ public sealed partial class MainViewModel : ObservableRecipient
 
         //var all = await client.Repository.GetAllForOrg("airsphere-gmbh");
 
-
         try
         {
-            Pr = await client.PullRequest.Get(repoId, prNum);
+            Pr = await client.PullRequest.Get(REPO_ID, prNum);
         }
         catch (Octokit.NotFoundException ex)
         {
@@ -209,14 +209,14 @@ public sealed partial class MainViewModel : ObservableRecipient
 
         Title = Pr.Title;
         Body = Pr.Body;
-        var a = await client.PullRequest.Commits(repoId, prNum);
+        var a = await client.PullRequest.Commits(REPO_ID, prNum);
         var b = a.Select(x => new Commit(x)).ToArray();
         Commits = [.. b];
 
         var orgaUsers = await client.Organization.Member.GetAll("airsphere-gmbh");
 
-        var requestedReviews = await client.PullRequest.ReviewRequest.Get(repoId, prNum);
-        var reviews = await client.PullRequest.Review.GetAll(repoId, prNum);
+        var requestedReviews = await client.PullRequest.ReviewRequest.Get(REPO_ID, prNum);
+        var reviews = await client.PullRequest.Review.GetAll(REPO_ID, prNum);
 
         var allReviewers = Enumerable.Concat(requestedReviews.Users, reviews.Select(x => x.User)).Select(x => new Reviewer(x)).Distinct();
 
@@ -232,9 +232,13 @@ public sealed partial class MainViewModel : ObservableRecipient
         reviewerView.SortDescriptions.Add(new(nameof(Reviewer.IsSelected), ListSortDirection.Descending));
         reviewerView.Filter = FilterReviewers;
 
-        var labels = await client.Issue.Labels.GetAllForIssue(repoId, Pr.Number);
+        var labels = await client.Issue.Labels.GetAllForIssue(REPO_ID, Pr.Number);
 
-        Labels = [.. labels.Select(x => new Label(x))];
+        // exclude up- and downmerge, they will be added later when merging
+        Labels = [.. labels
+            .Where(x => !string.Equals(x.Name, UPMERGE_LABEL, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(x.Name, DOWNMERGE_LABEL, StringComparison.OrdinalIgnoreCase))
+            .Select(x => new Label(x))];
 
         labelView = (ListCollectionView)CollectionViewSource.GetDefaultView(Labels);
         labelView.IsLiveSorting = true;
@@ -616,7 +620,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         return !repo.Index.IsFullyMerged;
     }
 
-    private async Task PullRequest(BranchVersion newBranchVersion)
+    private async Task PullRequest(BranchVersion newBranchVersion, bool isUpmerge = true)
     {
         var client = new GitHubClient(new ProductHeaderValue("IhGit"));
         var tokenAuth = new Octokit.Credentials(GitHubToken);
@@ -629,7 +633,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         var branchName = newBranchVersion.GetRemoteBranchName();
         var newBranchName = newBranchVersion.GetBranchNameForChanges(FeatureName);
 
-        var newPr = await client.PullRequest.Create(repoId, new NewPullRequest(title, newBranchName, branchName)
+        var newPr = await client.PullRequest.Create(REPO_ID, new NewPullRequest(title, newBranchName, branchName)
         {
             Body = Body,
         });
@@ -643,8 +647,9 @@ public sealed partial class MainViewModel : ObservableRecipient
             return;
         }
 
-        newPr = await client.PullRequest.ReviewRequest.Create(repoId, newPr.Number, new PullRequestReviewRequest([.. Reviewers.Where(x => x.IsSelected).Select(x => x.User.Login)], []));
-        await client.Issue.Labels.AddToIssue(repoId, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name)]);
+        var mergeLabel = isUpmerge ? UPMERGE_LABEL : DOWNMERGE_LABEL;
+        newPr = await client.PullRequest.ReviewRequest.Create(REPO_ID, newPr.Number, new PullRequestReviewRequest([.. Reviewers.Where(x => x.IsSelected).Select(x => x.User.Login)], []));
+        await client.Issue.Labels.AddToIssue(REPO_ID, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name), mergeLabel]);
 
         OpenUrl(newPr.Url);
     }
