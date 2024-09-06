@@ -651,7 +651,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         newPr = await client.PullRequest.ReviewRequest.Create(REPO_ID, newPr.Number, new PullRequestReviewRequest([.. Reviewers.Where(x => x.IsSelected).Select(x => x.User.Login)], []));
         await client.Issue.Labels.AddToIssue(REPO_ID, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name), mergeLabel]);
 
-        OpenUrl(newPr.Url);
+        OpenUrl(newPr.HtmlUrl);
     }
 
     private void OpenUrl(string url)
