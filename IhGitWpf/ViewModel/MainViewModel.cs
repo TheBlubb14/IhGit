@@ -232,13 +232,20 @@ public sealed partial class MainViewModel : ObservableRecipient
         reviewerView.SortDescriptions.Add(new(nameof(Reviewer.IsSelected), ListSortDirection.Descending));
         reviewerView.Filter = FilterReviewers;
 
+        var repoLabels = await client.Issue.Labels.GetAllForRepository(REPO_ID);
+
         var labels = await client.Issue.Labels.GetAllForIssue(REPO_ID, Pr.Number);
 
         // exclude up- and downmerge, they will be added later when merging
-        Labels = [.. labels
+        Labels = [.. repoLabels
             .Where(x => !string.Equals(x.Name, UPMERGE_LABEL, StringComparison.OrdinalIgnoreCase) &&
                         !string.Equals(x.Name, DOWNMERGE_LABEL, StringComparison.OrdinalIgnoreCase))
-            .Select(x => new Label(x))];
+            .Select(x =>
+            {
+                var label = new Label(x);
+                label.IsSelected = labels.Any(x => string.Equals(x.Name, label.ToString(), StringComparison.OrdinalIgnoreCase));
+                return label;
+            })];
 
         labelView = (ListCollectionView)CollectionViewSource.GetDefaultView(Labels);
         labelView.IsLiveSorting = true;
