@@ -128,15 +128,11 @@ public sealed partial class MainViewModel : ObservableRecipient
     private string featureName = "";
 
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
-    private ListCollectionView reviewerView;
-    private ListCollectionView labelView;
+    private ListCollectionView? reviewerView;
+    private ListCollectionView? labelView;
 
     [GeneratedRegex("I(\\d*)")]
     private static partial Regex ZohoTicketRegex();
-
-    public MainViewModel()
-    {
-    }
 
     [RelayCommand]
     private void Loaded()
