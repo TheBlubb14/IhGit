@@ -14,18 +14,22 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Web;
 using System.Windows;
 using Repository = LibGit2Sharp.Repository;
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Threading;
 using IhGitWpf.Properties;
+using System.Windows.Data;
 
 namespace IhGitWpf.ViewModel;
 
 public sealed partial class MainViewModel : ObservableRecipient
 {
+    private const long REPO_ID = 194316446;
+    private const string DOWNMERGE_LABEL = "downmerge";
+    private const string UPMERGE_LABEL = "upmerge";
+
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
     private int maxMajorVersion = Settings.Default.MaxMajorVersion;
 
@@ -50,6 +54,23 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     [ObservableProperty]
     private PullRequest? pr = null;
+
+    [ObservableProperty]
+    private ObservableCollectionEx<Reviewer> reviewers = [];
+
+    [ObservableProperty]
+    private ObservableCollectionEx<Label> labels = [];
+
+    [ObservableProperty]
+    private string reviewerFilter = "";
+
+    [ObservableProperty]
+    private string labelFilter = "";
+
+    partial void OnReviewerFilterChanged(string value)
+    {
+        this.reviewerView?.Refresh();
+    }
 
     [ObservableProperty]
     private string title = "";
@@ -89,7 +110,7 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     [ObservableProperty]
     private string gitHubToken = Settings.Default.GitHubToken;
-    
+
     partial void OnGitHubTokenChanged(string value)
     {
         Settings.Default.GitHubToken = value;
@@ -107,13 +128,11 @@ public sealed partial class MainViewModel : ObservableRecipient
     private string featureName = "";
 
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+    private ListCollectionView? reviewerView;
+    private ListCollectionView? labelView;
 
     [GeneratedRegex("I(\\d*)")]
     private static partial Regex ZohoTicketRegex();
-
-    public MainViewModel()
-    {
-    }
 
     [RelayCommand]
     private void Loaded()
@@ -173,13 +192,61 @@ public sealed partial class MainViewModel : ObservableRecipient
         client.Credentials = tokenAuth;
 
         //var all = await client.Repository.GetAllForOrg("airsphere-gmbh");
-        const long repoId = 194316446;
-        Pr = await client.PullRequest.Get(repoId, prNum);
+
+        try
+        {
+            Pr = await client.PullRequest.Get(REPO_ID, prNum);
+        }
+        catch (Octokit.NotFoundException ex)
+        {
+            MessageBox.Show(ex.Message);
+            return;
+        }
+
         Title = Pr.Title;
         Body = Pr.Body;
-        var a = await client.PullRequest.Commits(repoId, prNum);
+        var a = await client.PullRequest.Commits(REPO_ID, prNum);
         var b = a.Select(x => new Commit(x)).ToArray();
         Commits = [.. b];
+
+        var orgaUsers = await client.Organization.Member.GetAll("airsphere-gmbh");
+
+        var requestedReviews = await client.PullRequest.ReviewRequest.Get(REPO_ID, prNum);
+        var reviews = await client.PullRequest.Review.GetAll(REPO_ID, prNum);
+
+        var allReviewers = Enumerable.Concat(requestedReviews.Users, reviews.Select(x => x.User)).Select(x => new Reviewer(x)).Distinct();
+
+        Reviewers = [.. orgaUsers.Select(x =>
+        {
+            var reviewer = new Reviewer(x);
+            reviewer.IsSelected = allReviewers.Contains(reviewer);
+            return reviewer;
+        })];
+
+        reviewerView = (ListCollectionView)CollectionViewSource.GetDefaultView(Reviewers);
+        reviewerView.IsLiveSorting = true;
+        reviewerView.SortDescriptions.Add(new(nameof(Reviewer.IsSelected), ListSortDirection.Descending));
+        reviewerView.Filter = FilterReviewers;
+
+        var repoLabels = await client.Issue.Labels.GetAllForRepository(REPO_ID);
+
+        var labels = await client.Issue.Labels.GetAllForIssue(REPO_ID, Pr.Number);
+
+        // exclude up- and downmerge, they will be added later when merging
+        Labels = [.. repoLabels
+            .Where(x => !string.Equals(x.Name, UPMERGE_LABEL, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(x.Name, DOWNMERGE_LABEL, StringComparison.OrdinalIgnoreCase))
+            .Select(x =>
+            {
+                var label = new Label(x);
+                label.IsSelected = labels.Any(x => string.Equals(x.Name, label.ToString(), StringComparison.OrdinalIgnoreCase));
+                return label;
+            })];
+
+        labelView = (ListCollectionView)CollectionViewSource.GetDefaultView(Labels);
+        labelView.IsLiveSorting = true;
+        labelView.SortDescriptions.Add(new(nameof(Label.IsSelected), ListSortDirection.Descending));
+        labelView.Filter = FilterLabels;
 
         var index = Pr.Head.Ref.LastIndexOf('/');
         if (index == -1 || index == Pr.Head.Ref.Length - 1)
@@ -237,7 +304,24 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
     }
 
-    private void ClearUi()
+    private bool FilterReviewers(object obj)
+    {
+        if (string.IsNullOrWhiteSpace(ReviewerFilter))
+            return true;
+
+        return obj is Reviewer reviewer && reviewer.ToString().Contains(ReviewerFilter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool FilterLabels(object obj)
+    {
+        if (string.IsNullOrWhiteSpace(LabelFilter))
+            return true;
+
+        return obj is Label label && label.ToString().Contains(LabelFilter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [RelayCommand]
+    private void ClearUi(bool clearAll = false)
     {
         Pr = null;
         Title = "";
@@ -246,6 +330,15 @@ public sealed partial class MainViewModel : ObservableRecipient
         VersionsToConsider = [];
         FeatureName = "";
         zohoUrl = "";
+        ReviewerFilter = "";
+        Reviewers.Clear();
+        LabelFilter = "";
+        Labels.Clear();
+
+        if (clearAll)
+        {
+            PrNumber = "";
+        }
     }
 
     [RelayCommand]
@@ -502,7 +595,7 @@ public sealed partial class MainViewModel : ObservableRecipient
                 }
             }
             await Push();
-            PullRequest(upmergeToVersion);
+            await PullRequest(upmergeToVersion);
         }
 
         catch (Exception ex)
@@ -530,22 +623,38 @@ public sealed partial class MainViewModel : ObservableRecipient
         return !repo.Index.IsFullyMerged;
     }
 
-    private void PullRequest(BranchVersion newBranchVersion)
+    private async Task PullRequest(BranchVersion newBranchVersion, bool isUpmerge = true)
     {
-        var description = "";
+        var client = new GitHubClient(new ProductHeaderValue("IhGit"));
+        var tokenAuth = new Octokit.Credentials(GitHubToken);
+        client.Credentials = tokenAuth;
 
         var title = string.IsNullOrWhiteSpace(Title)
-            ? "&title=" + HttpUtility.UrlEncode($"({newBranchVersion})")
-            : "&title=" + HttpUtility.UrlEncode($"{Title} ({newBranchVersion})");
-
-        if (!string.IsNullOrWhiteSpace(Body))
-        {
-            description = "&body=" + HttpUtility.UrlEncode(Body);
-        }
+            ? $"({newBranchVersion})"
+            : $"{Title} ({newBranchVersion})";
 
         var branchName = newBranchVersion.GetRemoteBranchName();
         var newBranchName = newBranchVersion.GetBranchNameForChanges(FeatureName);
-        OpenUrl($"https://github.com/airsphere-gmbh/PaxControl/compare/{branchName}...{newBranchName}?quick_pull=1&labels=upmerge{title}{description}");
+
+        var newPr = await client.PullRequest.Create(REPO_ID, new NewPullRequest(title, newBranchName, branchName)
+        {
+            Body = Body,
+        });
+
+        if (newPr is null)
+        {
+            var line = new string('#', 20);
+            Log(line);
+            Log("Could not create PR");
+            Log(line);
+            return;
+        }
+
+        var mergeLabel = isUpmerge ? UPMERGE_LABEL : DOWNMERGE_LABEL;
+        newPr = await client.PullRequest.ReviewRequest.Create(REPO_ID, newPr.Number, new PullRequestReviewRequest([.. Reviewers.Where(x => x.IsSelected).Select(x => x.User.Login)], []));
+        await client.Issue.Labels.AddToIssue(REPO_ID, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name), mergeLabel]);
+
+        OpenUrl(newPr.HtmlUrl);
     }
 
     private void OpenUrl(string url)
