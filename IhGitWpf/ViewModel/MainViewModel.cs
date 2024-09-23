@@ -30,7 +30,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     private const string DOWNMERGE_LABEL = "downmerge";
     private const string UPMERGE_LABEL = "upmerge";
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private int maxMajorVersion = Settings.Default.MaxMajorVersion;
 
     partial void OnMaxMajorVersionChanged(int value)
@@ -38,7 +38,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         Settings.Default.MaxMajorVersion = value;
     }
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private int maxMinorVersion = Settings.Default.MaxMinorVersion;
 
     partial void OnMaxMinorVersionChanged(int value)
@@ -52,7 +52,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(LoadPrCommand))]
     private string prNumber = "";
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(OpenGithubCommand))]
     private PullRequest? pr = null;
 
     [ObservableProperty]
@@ -78,10 +78,10 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty]
     private string body = "";
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private ObservableCollectionEx<Commit> commits = [];
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private ObservableCollectionEx<BranchVersion> versionsToConsider = [];
 
     [ObservableProperty]
@@ -90,6 +90,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty]
     private ObservableCollection<string> logs = [];
 
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(OpenZohoCommand))]
     private string zohoUrl = "";
 
     [ObservableProperty]
@@ -116,7 +117,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         Settings.Default.GitHubToken = value;
     }
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(StatusCommand)), NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(StatusCommand)), NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private string repoPath = Settings.Default.RepoPath;
 
     partial void OnRepoPathChanged(string value)
@@ -124,7 +125,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         Settings.Default.RepoPath = value;
     }
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private string featureName = "";
 
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
@@ -263,7 +264,11 @@ public sealed partial class MainViewModel : ObservableRecipient
 
         if (regex.Success)
         {
-            zohoUrl = $"https://sprints.zoho.eu/team/airsphere#itemdetails/P9/I{regex.Groups[1].Value}";
+            ZohoUrl = $"https://sprints.zoho.eu/team/airsphere#itemdetails/P9/I{regex.Groups[1].Value}";
+        }
+        else
+        {
+            ZohoUrl = "";
         }
 
         var prBranchVersion = new BranchVersion(Pr.Base.Ref);
@@ -341,15 +346,24 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanOpenZoho))]
     private void OpenZoho()
     {
-        Process.Start(new ProcessStartInfo()
-        {
-            FileName = zohoUrl,
-            UseShellExecute = true,
-        });
+        OpenUrl(ZohoUrl);
     }
+
+    private bool CanOpenZoho() => !string.IsNullOrWhiteSpace(ZohoUrl);
+
+    [RelayCommand(CanExecute = nameof(CanOpenGithub))]
+    private void OpenGithub()
+    {
+        if (Pr is null)
+            return;
+
+        OpenUrl(Pr.HtmlUrl);
+    }
+
+    private bool CanOpenGithub() => !string.IsNullOrWhiteSpace(Pr?.HtmlUrl);
 
     [RelayCommand]
     private void ClearLogs()
@@ -404,6 +418,17 @@ public sealed partial class MainViewModel : ObservableRecipient
                 }
             }
         }
+    }
+
+    private bool CanDownmerge()
+    {
+        return false;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDownmerge))]
+    private Task DownMerge()
+    {
+        return Task.CompletedTask;
     }
 
     private CredentialsHandler? GetCredentialsHandler()
