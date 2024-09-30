@@ -8,6 +8,7 @@
         xmlns:behavior="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:octo="clr-namespace:Octokit;assembly=Octokit"
         xmlns:vm="clr-namespace:IhGitWpf.ViewModel"
+        xmlns:controls="clr-namespace:IhGitWpf.Controls"
         xmlns:local="clr-namespace:IhGitWpf"
         mc:Ignorable="d"
         Style="{StaticResource MaterialDesignWindow}"
@@ -90,12 +91,6 @@
                     <Button Command="{Binding OpenGithubCommand}"
                             Margin="8 0"
                             Content="{materialDesign:PackIcon Github}" />
-                    <Button Command="{Binding UpMergeCommand}"
-                            Margin="8 0"
-                            Content="{materialDesign:PackIcon ArrowUp}" />
-                    <Button Command="{Binding DownMergeCommand}"
-                            Margin="8 0"
-                            Content="{materialDesign:PackIcon ArrowDown}" />
                     <Button Command="{Binding ClearUiCommand}"
                             Content="{materialDesign:PackIcon Delete}"
                             Margin="8 0">
@@ -103,7 +98,7 @@
                             <s:Boolean>True</s:Boolean>
                         </Button.CommandParameter>
                     </Button>
- 
+
                 </StackPanel>
 
                 <TextBox VerticalAlignment="Center"
@@ -258,7 +253,7 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           Grid.Column="0"
                           Grid.Row="3"
-                          Margin="12 0">
+                          Margin="12">
                 <ItemsControl Grid.IsSharedSizeScope="True"
                               ItemsSource="{Binding Commits}">
                     <ItemsControl.ItemTemplate>
@@ -310,51 +305,36 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          Grid.Row="3"
-                          Grid.Column="1"
-                          Margin="12 0">
-                <ItemsControl Grid.IsSharedSizeScope="True"
-                              ItemsSource="{Binding VersionsToConsider}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:BranchVersion}">
-                            <Border x:Name="Border"
-                                    Padding="8">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition SharedSizeGroup="Checkerz" />
-                                        <ColumnDefinition />
-                                    </Grid.ColumnDefinitions>
-                                    <CheckBox VerticalAlignment="Center"
-                                              IsChecked="{Binding IsSelected}"
-                                              Grid.IsSharedSizeScope="True">
-                                        <Grid Grid.Column="1"
-                                              Margin="8,0,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"
-                                                                  SharedSizeGroup="A" />
-                                            </Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition />
-                                            </Grid.RowDefinitions>
-                                            <TextBlock FontWeight="Bold"
-                                                       Text="{Binding .}" />
-                                        </Grid>
-                                    </CheckBox>
-                                </Grid>
-                            </Border>
-                            <DataTemplate.Triggers>
-                                <DataTrigger Binding="{Binding IsSelected}"
-                                             Value="True">
-                                    <Setter TargetName="Border"
-                                            Property="Background"
-                                            Value="{DynamicResource MaterialDesignSelection}" />
-                                </DataTrigger>
-                            </DataTemplate.Triggers>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+            <Grid Grid.Row="3"
+                  Grid.Column="1"
+                  Margin="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Button Grid.Column="0"
+                        Grid.Row="0"
+                        Command="{Binding UpMergeCommand}"
+                        Margin="8 0"
+                        Content="{materialDesign:PackIcon ArrowUp}" />
+                <controls:BranchSelect Grid.Column="0"
+                                       Grid.Row="1"
+                                       Versions="{Binding Path=UpMergeVersions}" />
+
+                <Button Grid.Column="1"
+                        Grid.Row="0"
+                        Command="{Binding DownMergeCommand}"
+                        Margin="8 0"
+                        Content="{materialDesign:PackIcon ArrowDown}" />
+                <controls:BranchSelect Grid.Column="1"
+                                       Grid.Row="1"
+                                       Versions="{Binding DownMergeVersions}" />
+            </Grid>
         </Grid>
 
         <Grid Grid.Column="2"

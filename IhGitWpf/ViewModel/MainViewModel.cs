@@ -81,8 +81,11 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private ObservableCollectionEx<Commit> commits = [];
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
-    private ObservableCollectionEx<BranchVersion> versionsToConsider = [];
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand))]
+    private ObservableCollectionEx<BranchVersion> upMergeVersions = [];
+
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
+    private ObservableCollectionEx<BranchVersion> downMergeVersions = [];
 
     [ObservableProperty]
     private bool showZohoButton;
@@ -141,16 +144,29 @@ public sealed partial class MainViewModel : ObservableRecipient
     }
 
     #region Collections Notify Hack
-    partial void OnVersionsToConsiderChanging(ObservableCollectionEx<BranchVersion>? oldValue, ObservableCollectionEx<BranchVersion> newValue)
+    partial void OnUpMergeVersionsChanging(ObservableCollectionEx<BranchVersion>? oldValue, ObservableCollectionEx<BranchVersion> newValue)
     {
         if (oldValue is not null)
         {
-            ((INotifyPropertyChanged)newValue).PropertyChanged -= VersionsToConsiderChanged;
+            ((INotifyPropertyChanged)newValue).PropertyChanged -= UpMergeVersionsChanged;
         }
 
         if (newValue is not null)
         {
-            ((INotifyPropertyChanged)newValue).PropertyChanged += VersionsToConsiderChanged;
+            ((INotifyPropertyChanged)newValue).PropertyChanged += UpMergeVersionsChanged;
+        }
+    }
+
+    partial void OnDownMergeVersionsChanged(ObservableCollectionEx<BranchVersion>? oldValue, ObservableCollectionEx<BranchVersion> newValue)
+    {
+        if (oldValue is not null)
+        {
+            ((INotifyPropertyChanged)newValue).PropertyChanged -= DownMergeVersionsChanged;
+        }
+
+        if (newValue is not null)
+        {
+            ((INotifyPropertyChanged)newValue).PropertyChanged += DownMergeVersionsChanged;
         }
     }
 
@@ -172,9 +188,14 @@ public sealed partial class MainViewModel : ObservableRecipient
         UpMergeCommand.NotifyCanExecuteChanged();
     }
 
-    private void VersionsToConsiderChanged(object? sender, PropertyChangedEventArgs e)
+    private void UpMergeVersionsChanged(object? sender, PropertyChangedEventArgs e)
     {
         UpMergeCommand.NotifyCanExecuteChanged();
+    }
+
+    private void DownMergeVersionsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        DownMergeCommand.NotifyCanExecuteChanged();
     }
     #endregion
 
@@ -295,11 +316,11 @@ public sealed partial class MainViewModel : ObservableRecipient
                 // Add stable
                 result.Add(new(0, 0, BranchType.stable));
 
-                VersionsToConsider = [.. result];
+                UpMergeVersions = [.. result];
                 break;
 
             case BranchType.deploy:
-                VersionsToConsider = [new(0, 0, BranchType.stable)];
+                UpMergeVersions = [new(0, 0, BranchType.stable)];
                 break;
 
             case BranchType.stable:
@@ -332,7 +353,8 @@ public sealed partial class MainViewModel : ObservableRecipient
         Title = "";
         Body = "";
         Commits = [];
-        VersionsToConsider = [];
+        UpMergeVersions = [];
+        DownMergeVersions = [];
         FeatureName = "";
         zohoUrl = "";
         ReviewerFilter = "";
@@ -382,30 +404,36 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (!CanStatus())
             return false;
 
-        if (VersionsToConsider is null || VersionsToConsider.Count == 0 || Commits is null || Commits.Count == 0)
+        if (UpMergeVersions is null || UpMergeVersions.Count == 0 || Commits is null || Commits.Count == 0)
             return false;
 
-        return Commits.Any(x => x.IsSelected) && VersionsToConsider.Any(x => x.IsSelected && !x.IsCherryPicked);
+        return Commits.Any(x => x.IsSelected) && UpMergeVersions.Any(x => x.IsSelected && !x.IsCherryPicked);
     }
 
     [RelayCommand(CanExecute = nameof(CanUpmerge))]
     private async Task UpMerge()
     {
-        for (int i = 0; i < VersionsToConsider.Count; i++)
+        for (int i = 0; i < UpMergeVersions.Count; i++)
         {
-            var version = VersionsToConsider[i];
+            var version = UpMergeVersions[i];
 
             if (version.IsCherryPicked || version.IsCherryPicked || !version.IsSelected)
                 continue;
 
-            var success = await UpmergeOne(version);
+            var success = await MergeOne(version);
             if (success)
             {
                 version.IsCherryPicked = true;
             }
             else
             {
-                var result = MessageBox.Show($"Upmerge of version {version} failed.\r\nYes: Retry\r\nNo: Skip this version\r\nCancel: Cancel the rest of the upmerge", "Upmerge failed", MessageBoxButton.YesNoCancel);
+                var result = MessageBox.Show(
+                    $"Upmerge of version {version} failed.\r\n" +
+                    $"Yes: Retry\r\n" +
+                    $"No: Skip this version\r\n" +
+                    $"Cancel: Cancel the rest of the upmerge",
+                    "Upmerge failed",
+                    MessageBoxButton.YesNoCancel);
                 switch (result)
                 {
                     case MessageBoxResult.Cancel:
@@ -422,13 +450,57 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     private bool CanDownmerge()
     {
-        return false;
+        if (string.IsNullOrWhiteSpace(FeatureName))
+            return false;
+
+        if (MaxMajorVersion < 4 || MaxMinorVersion < 0)
+            return false;
+
+        if (!CanStatus())
+            return false;
+
+        if (DownMergeVersions is null || DownMergeVersions.Count == 0 || Commits is null || Commits.Count == 0)
+            return false;
+
+        return Commits.Any(x => x.IsSelected) && DownMergeVersions.Any(x => x.IsSelected && !x.IsCherryPicked);
     }
 
     [RelayCommand(CanExecute = nameof(CanDownmerge))]
-    private Task DownMerge()
+    private async Task DownMerge()
     {
-        return Task.CompletedTask;
+        for (int i = 0; i < DownMergeVersions.Count; i++)
+        {
+            var version = DownMergeVersions[i];
+
+            if (version.IsCherryPicked || version.IsCherryPicked || !version.IsSelected)
+                continue;
+
+            var success = await MergeOne(version);
+            if (success)
+            {
+                version.IsCherryPicked = true;
+            }
+            else
+            {
+                var result = MessageBox.Show(
+                    $"Downmerge of version {version} failed.\r\n" +
+                    $"Yes: Retry\r\n" +
+                    $"No: Skip this version\r\n" +
+                    $"Cancel: Cancel the rest of the Downmerge",
+                    "Downmerge failed",
+                    MessageBoxButton.YesNoCancel);
+                switch (result)
+                {
+                    case MessageBoxResult.Cancel:
+                        return;
+                    case MessageBoxResult.Yes:
+                        i--;
+                        break;
+                    case MessageBoxResult.No:
+                        continue;
+                }
+            }
+        }
     }
 
     private CredentialsHandler? GetCredentialsHandler()
@@ -513,12 +585,12 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
     }
 
-    private async Task<bool> UpmergeOne(BranchVersion upmergeToVersion)
+    private async Task<bool> MergeOne(BranchVersion mergeToVersion)
     {
         try
         {
             Fetch();
-            if (!await CreateAndSwitchBranch(upmergeToVersion.GetBranchNameForChanges(FeatureName), upmergeToVersion.ToString()))
+            if (!await CreateAndSwitchBranch(mergeToVersion.GetBranchNameForChanges(FeatureName), mergeToVersion.ToString()))
                 return false;
 
             foreach (var commit in Commits.Where(x => x.IsSelected).ToArray())
@@ -598,7 +670,13 @@ public sealed partial class MainViewModel : ObservableRecipient
                         using var repo = new Repository(RepoPath);
                         var conflicts = repo.Index.Conflicts.Cast<Conflict>();
                         var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x.Ancestor.Path));
-                        var mbox = MessageBox.Show("Waiting for merge conflicts to be solved..\r\n Yes: try-again\r\nNo: cherry-pick --continue\r\nCancel: Abort" + files, "cherry pick failed", MessageBoxButton.YesNoCancel);
+                        var mbox = MessageBox.Show(
+                            "Waiting for merge conflicts to be solved..\r\n" +
+                            "Yes: try-again\r\n" +
+                            "No: cherry-pick --continue\r\n" +
+                            "Cancel: Abort" + files,
+                            "cherry pick failed",
+                            MessageBoxButton.YesNoCancel);
 
                         switch (mbox)
                         {
@@ -620,12 +698,12 @@ public sealed partial class MainViewModel : ObservableRecipient
                 }
             }
             await Push();
-            await PullRequest(upmergeToVersion);
+            await PullRequest(mergeToVersion);
         }
 
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Error during upmerge");
+            MessageBox.Show(ex.Message, "Error during merge");
             return false;
         }
         return true;
