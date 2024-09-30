@@ -41,6 +41,9 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private int maxMinorVersion = Settings.Default.MaxMinorVersion;
 
+    private int minMajorVersion = 4;
+    private int minMinorVersion = 15;
+
     partial void OnMaxMinorVersionChanged(int value)
     {
         Settings.Default.MaxMinorVersion = value;
@@ -137,6 +140,9 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     [GeneratedRegex("I(\\d*)")]
     private static partial Regex ZohoTicketRegex();
+
+    [GeneratedRegex("support\\/v([4-5])\\.([1-9][0-9]?)")]
+    private static partial Regex SupportBranchRegex();
 
     [RelayCommand]
     private void Loaded()
@@ -292,8 +298,27 @@ public sealed partial class MainViewModel : ObservableRecipient
             ZohoUrl = "";
         }
 
+        var allBranches = await client.Repository.Branch.GetAll(REPO_ID);
+        var allSupportBranches = allBranches
+            .Select(x => SupportBranchRegex().Match(x.Name))
+            .Where(x => x.Success && x.Groups.Count == 3)
+            .Select(x => new { Major = int.Parse(x.Groups[1].Value), Minor = int.Parse(x.Groups[2].Value) })
+            .ToArray();
+
+        // TODO: hide these two from the ui, make simple fields
+        MaxMajorVersion = allSupportBranches.MaxBy(x => x.Major).Major;
+        MaxMinorVersion = allSupportBranches.Where(x => x.Major == MaxMajorVersion).MaxBy(x => x.Minor).Minor;
+
+        // TODO: major jumps, 4.00 -> 5.00 // 5.00 -> 4.00
+        // TODO: change "max version" ui, rename to "oldest supported version",
+        // remove deploy checkbox, check in the branches!
+        minMajorVersion = allSupportBranches.MinBy(x => x.Major).Major;
+        minMinorVersion = allSupportBranches.Where(x => x.Major == minMajorVersion).MinBy(x => x.Minor).Minor;
+
         var prBranchVersion = new BranchVersion(Pr.Base.Ref);
 
+
+        // UpMerge
         switch (prBranchVersion.BranchType)
         {
             case BranchType.support:
@@ -324,6 +349,29 @@ public sealed partial class MainViewModel : ObservableRecipient
                 break;
 
             case BranchType.stable:
+            default:
+                // Nothing todo
+                break;
+        }
+
+        // DownMerge
+        switch (prBranchVersion.BranchType)
+        {
+            case BranchType.support:
+            case BranchType.deploy:
+            case BranchType.stable:
+                List<BranchVersion> result = [];
+
+                if (prBranchVersion.Minor > minMinorVersion)
+                {
+                    // Count up all support versions
+                    for (int i = prBranchVersion.Minor - 1; i >= minMinorVersion; i--)
+                        result.Add(new(prBranchVersion.Major, i));
+                }
+
+                DownMergeVersions = [.. result];
+                break;
+
             default:
                 // Nothing todo
                 break;
