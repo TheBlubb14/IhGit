@@ -392,16 +392,15 @@
                              Style="{StaticResource MaterialDesignOutlinedTextBox}"
                              Text="{Binding FeatureName, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
                     <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Oldest Supported Version" VerticalAlignment="Center" />
                         <local:NumericTextBox VerticalAlignment="Center"
                                               materialDesign:HintAssist.Hint="Major"
                                               Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                              Text="{Binding MaxMajorVersion, UpdateSourceTrigger=LostFocus, Mode=TwoWay}" />
+                                              Text="{Binding MinSupportMajorVersion, UpdateSourceTrigger=LostFocus, Mode=TwoWay}" />
                         <local:NumericTextBox VerticalAlignment="Center"
                                               materialDesign:HintAssist.Hint="Minor"
                                               Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                              Text="{Binding MaxMinorVersion, UpdateSourceTrigger=LostFocus, Mode=TwoWay}" />
-                        <CheckBox Content="Max Version is deploy"
-                                  IsChecked="{Binding MaxVersionIsDeploy}" />
+                                              Text="{Binding MinSupportMinorVersion, UpdateSourceTrigger=LostFocus, Mode=TwoWay}" />
                     </StackPanel>
                 </StackPanel>
             </Grid>

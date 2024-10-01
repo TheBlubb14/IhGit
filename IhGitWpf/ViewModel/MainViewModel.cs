@@ -30,27 +30,27 @@ public sealed partial class MainViewModel : ObservableRecipient
     private const string DOWNMERGE_LABEL = "downmerge";
     private const string UPMERGE_LABEL = "upmerge";
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
-    private int maxMajorVersion = Settings.Default.MaxMajorVersion;
+    [ObservableProperty]
+    private int minSupportMajorVersion = Settings.Default.MinSupportMajorVersion;
 
-    partial void OnMaxMajorVersionChanged(int value)
+    partial void OnMinSupportMajorVersionChanged(int value)
     {
-        Settings.Default.MaxMajorVersion = value;
-    }
-
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
-    private int maxMinorVersion = Settings.Default.MaxMinorVersion;
-
-    private int minMajorVersion = 4;
-    private int minMinorVersion = 15;
-
-    partial void OnMaxMinorVersionChanged(int value)
-    {
-        Settings.Default.MaxMinorVersion = value;
+        Settings.Default.MinSupportMajorVersion = value;
     }
 
     [ObservableProperty]
-    private bool maxVersionIsDeploy = false;
+    private int minSupportMinorVersion = Settings.Default.MinSupportMinorVersion;
+
+    private int maxMajorVersion = 4;
+    private int maxMinorVersion = 20;
+    private int minMajorVersion = 4;
+    private int minMinorVersion = 15;
+    private bool hasDeploy;
+
+    partial void OnMinSupportMinorVersionChanged(int value)
+    {
+        Settings.Default.MinSupportMinorVersion = value;
+    }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(LoadPrCommand))]
     private string prNumber = "";
@@ -305,18 +305,19 @@ public sealed partial class MainViewModel : ObservableRecipient
             .Select(x => new { Major = int.Parse(x.Groups[1].Value), Minor = int.Parse(x.Groups[2].Value) })
             .ToArray();
 
-        // TODO: hide these two from the ui, make simple fields
-        MaxMajorVersion = allSupportBranches.MaxBy(x => x.Major).Major;
-        MaxMinorVersion = allSupportBranches.Where(x => x.Major == MaxMajorVersion).MaxBy(x => x.Minor).Minor;
+        maxMajorVersion = allSupportBranches.MaxBy(x => x.Major).Major;
+        maxMinorVersion = allSupportBranches.Where(x => x.Major == maxMajorVersion).MaxBy(x => x.Minor).Minor;
 
         // TODO: major jumps, 4.00 -> 5.00 // 5.00 -> 4.00
-        // TODO: change "max version" ui, rename to "oldest supported version",
-        // remove deploy checkbox, check in the branches!
         minMajorVersion = allSupportBranches.MinBy(x => x.Major).Major;
         minMinorVersion = allSupportBranches.Where(x => x.Major == minMajorVersion).MinBy(x => x.Minor).Minor;
 
-        var prBranchVersion = new BranchVersion(Pr.Base.Ref);
+        minMajorVersion = Math.Max(minMajorVersion, MinSupportMajorVersion);
+        minMinorVersion = Math.Max(minMinorVersion, MinSupportMinorVersion);
 
+        hasDeploy = allBranches.Any(x => x.Name.StartsWith("deploy/"));
+
+        var prBranchVersion = new BranchVersion(Pr.Base.Ref);
 
         // UpMerge
         switch (prBranchVersion.BranchType)
@@ -324,18 +325,18 @@ public sealed partial class MainViewModel : ObservableRecipient
             case BranchType.support:
                 List<BranchVersion> result = [];
 
-                if (prBranchVersion.Minor < MaxMinorVersion)
+                if (prBranchVersion.Minor < maxMinorVersion)
                 {
                     // Count up all support versions
-                    for (int i = prBranchVersion.Minor + 1; i < MaxMinorVersion; i++)
+                    for (int i = prBranchVersion.Minor + 1; i < maxMinorVersion; i++)
                         result.Add(new(prBranchVersion.Major, i));
                 }
 
                 // When we are on 4.19 already and max version is 4.19, then dont add 4.19
-                if (prBranchVersion.Minor < MaxMinorVersion)
+                if (prBranchVersion.Minor < maxMinorVersion)
                 {
                     // Add max version
-                    result.Add(new(prBranchVersion.Major, MaxMinorVersion, MaxVersionIsDeploy ? BranchType.deploy : BranchType.support));
+                    result.Add(new(prBranchVersion.Major, maxMinorVersion, hasDeploy ? BranchType.deploy : BranchType.support));
                 }
 
                 // Add stable
@@ -446,9 +447,6 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (string.IsNullOrWhiteSpace(FeatureName))
             return false;
 
-        if (MaxMajorVersion < 4 || MaxMinorVersion < 0)
-            return false;
-
         if (!CanStatus())
             return false;
 
@@ -468,7 +466,7 @@ public sealed partial class MainViewModel : ObservableRecipient
             if (version.IsCherryPicked || version.IsCherryPicked || !version.IsSelected)
                 continue;
 
-            var success = await MergeOne(version);
+            var success = await MergeOne(version, true);
             if (success)
             {
                 version.IsCherryPicked = true;
@@ -501,9 +499,6 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (string.IsNullOrWhiteSpace(FeatureName))
             return false;
 
-        if (MaxMajorVersion < 4 || MaxMinorVersion < 0)
-            return false;
-
         if (!CanStatus())
             return false;
 
@@ -523,7 +518,7 @@ public sealed partial class MainViewModel : ObservableRecipient
             if (version.IsCherryPicked || version.IsCherryPicked || !version.IsSelected)
                 continue;
 
-            var success = await MergeOne(version);
+            var success = await MergeOne(version, false);
             if (success)
             {
                 version.IsCherryPicked = true;
@@ -633,7 +628,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
     }
 
-    private async Task<bool> MergeOne(BranchVersion mergeToVersion)
+    private async Task<bool> MergeOne(BranchVersion mergeToVersion, bool isUpMerge)
     {
         try
         {
@@ -717,7 +712,7 @@ public sealed partial class MainViewModel : ObservableRecipient
                     {
                         using var repo = new Repository(RepoPath);
                         var conflicts = repo.Index.Conflicts.Cast<Conflict>();
-                        var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x.Ancestor.Path));
+                        var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x?.Ancestor?.Path ?? ""));
                         var mbox = MessageBox.Show(
                             "Waiting for merge conflicts to be solved..\r\n" +
                             "Yes: try-again\r\n" +
@@ -746,7 +741,7 @@ public sealed partial class MainViewModel : ObservableRecipient
                 }
             }
             await Push();
-            await PullRequest(mergeToVersion);
+            await PullRequest(mergeToVersion, isUpMerge);
         }
 
         catch (Exception ex)
@@ -774,7 +769,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         return !repo.Index.IsFullyMerged;
     }
 
-    private async Task PullRequest(BranchVersion newBranchVersion, bool isUpmerge = true)
+    private async Task PullRequest(BranchVersion newBranchVersion, bool isUpMerge)
     {
         var client = new GitHubClient(new ProductHeaderValue("IhGit"));
         var tokenAuth = new Octokit.Credentials(GitHubToken);
@@ -801,7 +796,7 @@ public sealed partial class MainViewModel : ObservableRecipient
             return;
         }
 
-        var mergeLabel = isUpmerge ? UPMERGE_LABEL : DOWNMERGE_LABEL;
+        var mergeLabel = isUpMerge ? UPMERGE_LABEL : DOWNMERGE_LABEL;
         newPr = await client.PullRequest.ReviewRequest.Create(REPO_ID, newPr.Number, new PullRequestReviewRequest([.. Reviewers.Where(x => x.IsSelected).Select(x => x.User.Login)], []));
         await client.Issue.Labels.AddToIssue(REPO_ID, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name), mergeLabel]);
 
