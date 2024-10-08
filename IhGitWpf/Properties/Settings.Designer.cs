@@ -12,7 +12,7 @@ namespace IhGitWpf.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.10.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.12.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -73,25 +73,25 @@ namespace IhGitWpf.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("4")]
-        public int MaxMajorVersion {
+        [global::System.Configuration.DefaultSettingValueAttribute("16")]
+        public int MinSupportMinorVersion {
             get {
-                return ((int)(this["MaxMajorVersion"]));
+                return ((int)(this["MinSupportMinorVersion"]));
             }
             set {
-                this["MaxMajorVersion"] = value;
+                this["MinSupportMinorVersion"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("20")]
-        public int MaxMinorVersion {
+        [global::System.Configuration.DefaultSettingValueAttribute("4")]
+        public int MinSupportMajorVersion {
             get {
-                return ((int)(this["MaxMinorVersion"]));
+                return ((int)(this["MinSupportMajorVersion"]));
             }
             set {
-                this["MaxMinorVersion"] = value;
+                this["MinSupportMajorVersion"] = value;
             }
         }
     }

@@ -14,11 +14,11 @@
     <Setting Name="Password" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="MaxMajorVersion" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">4</Value>
+    <Setting Name="MinSupportMinorVersion" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">16</Value>
     </Setting>
-    <Setting Name="MaxMinorVersion" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">20</Value>
+    <Setting Name="MinSupportMajorVersion" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">4</Value>
     </Setting>
   </Settings>
 </SettingsFile>
