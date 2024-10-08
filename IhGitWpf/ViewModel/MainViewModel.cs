@@ -363,11 +363,21 @@ public sealed partial class MainViewModel : ObservableRecipient
             case BranchType.stable:
                 List<BranchVersion> result = [];
 
-                if (prBranchVersion.Minor > minMinorVersion)
+                var downMergeMaxMinorVersion = prBranchVersion.Minor;
+                var downMergeMajorVersion = prBranchVersion.Major;
+
+                if (prBranchVersion.BranchType == BranchType.stable)
+                {
+                    // We are on stable, so we need to also include the max support version
+                    downMergeMaxMinorVersion = maxMinorVersion + 1;
+                    downMergeMajorVersion = maxMajorVersion;
+                }
+
+                if (downMergeMaxMinorVersion > minMinorVersion)
                 {
                     // Count up all support versions
-                    for (int i = prBranchVersion.Minor - 1; i >= minMinorVersion; i--)
-                        result.Add(new(prBranchVersion.Major, i));
+                    for (int i = downMergeMaxMinorVersion - 1; i >= minMinorVersion; i--)
+                        result.Add(new(downMergeMajorVersion, i));
                 }
 
                 DownMergeVersions = [.. result];
@@ -405,7 +415,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         UpMergeVersions = [];
         DownMergeVersions = [];
         FeatureName = "";
-        zohoUrl = "";
+        ZohoUrl = "";
         ReviewerFilter = "";
         Reviewers.Clear();
         LabelFilter = "";
