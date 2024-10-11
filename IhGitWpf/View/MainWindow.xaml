@@ -123,12 +123,14 @@
 
                         <TextBox VerticalAlignment="Center"
                                  materialDesign:HintAssist.Hint="Title"
+                                 ToolTip="The title of your PR"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  Text="{Binding Title}" />
 
                         <TextBox Height="100"
                                  VerticalAlignment="Top"
                                  materialDesign:HintAssist.Hint="Description"
+                                 ToolTip="The body of your PR"
                                  AcceptsReturn="True"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  TextWrapping="Wrap"
@@ -138,6 +140,7 @@
 
                         <TextBox VerticalAlignment="Center"
                                  materialDesign:HintAssist.Hint="Feature Name"
+                                 ToolTip="The name of your feature. Used to create a branch"
                                  materialDesign:TextFieldAssist.HasClearButton="True"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  Text="{Binding FeatureName, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
@@ -424,6 +427,7 @@
                              Margin="0,0,0,16"
                              VerticalAlignment="Center"
                              materialDesign:HintAssist.Hint="GitHub Token"
+                             ToolTip="An GitHub AccessToken(Classic) with read/write access to the repo"
                              materialDesign:TextFieldAssist.HasClearButton="True"
                              Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
                              materialDesign:PasswordBoxAssist.Password="{Binding GitHubToken, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
@@ -432,6 +436,7 @@
                          Margin="0,0,16,16"
                          VerticalAlignment="Center"
                          materialDesign:HintAssist.Hint="Username"
+                         ToolTip="Yout GitHub UserName"
                          materialDesign:TextFieldAssist.HasClearButton="True"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
                          Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
@@ -440,6 +445,7 @@
                              Margin="0,0,0,16"
                              VerticalAlignment="Center"
                              materialDesign:HintAssist.Hint="Password"
+                             ToolTip="Your Password to authenticate to Git. Leave empty if GitHubToken is set"
                              materialDesign:TextFieldAssist.HasClearButton="True"
                              Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
                              materialDesign:PasswordBoxAssist.Password="{Binding Password, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
@@ -449,6 +455,7 @@
                          Margin="0,0,0,16"
                          VerticalAlignment="Center"
                          materialDesign:HintAssist.Hint="Repo Path"
+                         ToolTip="The complete path to the root of your Git Project. This Repo is used for the Git Operations, like checkout, create branches and chery-pick"
                          materialDesign:TextFieldAssist.HasClearButton="True"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
                          Text="{Binding RepoPath, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
@@ -458,6 +465,7 @@
                             Orientation="Horizontal">
                     <TextBlock Text="Oldest Supported Version"
                                Margin="0,0,16,0"
+                               ToolTip="The lowest version our company provides support for"
                                VerticalAlignment="Center" />
                     <local:NumericTextBox VerticalAlignment="Center"
                                           Margin="0,0,16,0"
