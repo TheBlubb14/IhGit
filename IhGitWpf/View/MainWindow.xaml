@@ -56,6 +56,15 @@
                                 Key="Enter" />
                 </TextBox.InputBindings>
             </TextBox>
+
+            <TextBlock Grid.Row="0"
+                       Grid.Column="1"
+                       Margin="16 0"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"
+                       Style="{StaticResource MaterialDesignDisplaySmallTextBlock}"
+                       Text="{Binding CurrentVersion}" />
+
             <StackPanel Grid.Row="1"
                         Grid.Column="0"
                         Grid.ColumnSpan="2">
@@ -392,7 +401,8 @@
                              Style="{StaticResource MaterialDesignOutlinedTextBox}"
                              Text="{Binding FeatureName, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Oldest Supported Version" VerticalAlignment="Center" />
+                        <TextBlock Text="Oldest Supported Version"
+                                   VerticalAlignment="Center" />
                         <local:NumericTextBox VerticalAlignment="Center"
                                               materialDesign:HintAssist.Hint="Major"
                                               Style="{StaticResource MaterialDesignOutlinedTextBox}"

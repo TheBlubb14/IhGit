@@ -81,6 +81,9 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty]
     private string body = "";
 
+    [ObservableProperty]
+    private string currentVersion = "";
+
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private ObservableCollectionEx<Commit> commits = [];
 
@@ -140,9 +143,6 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     [GeneratedRegex("I(\\d*)")]
     private static partial Regex ZohoTicketRegex();
-
-    [GeneratedRegex("support\\/v([4-5])\\.([1-9][0-9]?)")]
-    private static partial Regex SupportBranchRegex();
 
     [RelayCommand]
     private void Loaded()
@@ -299,25 +299,36 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
 
         var allBranches = await client.Repository.Branch.GetAll(REPO_ID);
-        var allSupportBranches = allBranches
-            .Select(x => SupportBranchRegex().Match(x.Name))
-            .Where(x => x.Success && x.Groups.Count == 3)
-            .Select(x => new { Major = int.Parse(x.Groups[1].Value), Minor = int.Parse(x.Groups[2].Value) })
-            .ToArray();
 
-        maxMajorVersion = allSupportBranches.MaxBy(x => x.Major).Major;
-        maxMinorVersion = allSupportBranches.Where(x => x.Major == maxMajorVersion).MaxBy(x => x.Minor).Minor;
+        if (allBranches is not { Count: > 0 })
+            return;
+
+        var allBranchVersions = allBranches
+            .Select(x => BranchVersion.TryParse(x.Name))
+            .OfType<BranchVersion>(); //It kinda a bug that nullable tracking doesn't work for this -> .Where(x => x is not null);
+
+        var allSupportBranches = allBranchVersions
+            .Where(x => x.BranchType == BranchType.support);
+
+        var deployBranch = allBranchVersions
+            .Where(x => x.BranchType == BranchType.deploy)
+            .MaxBy(x => x.Minor);
+
+        hasDeploy = deployBranch is not null;
+
+        maxMajorVersion = allSupportBranches.MaxBy(x => x.Major)?.Major ?? 0;
+        maxMinorVersion = allSupportBranches.Where(x => x.Major == maxMajorVersion).MaxBy(x => x.Minor)?.Minor ?? 0;
 
         // TODO: major jumps, 4.00 -> 5.00 // 5.00 -> 4.00
-        minMajorVersion = allSupportBranches.MinBy(x => x.Major).Major;
-        minMinorVersion = allSupportBranches.Where(x => x.Major == minMajorVersion).MinBy(x => x.Minor).Minor;
+        minMajorVersion = allSupportBranches.MinBy(x => x.Major)?.Major ?? 0;
+        minMinorVersion = allSupportBranches.Where(x => x.Major == minMajorVersion).MinBy(x => x.Minor)?.Minor ?? 0;
 
         minMajorVersion = Math.Max(minMajorVersion, MinSupportMajorVersion);
         minMinorVersion = Math.Max(minMinorVersion, MinSupportMinorVersion);
 
-        hasDeploy = allBranches.Any(x => x.Name.StartsWith("deploy/"));
-
         var prBranchVersion = new BranchVersion(Pr.Base.Ref);
+
+        CurrentVersion = prBranchVersion.ToString();
 
         // UpMerge
         switch (prBranchVersion.BranchType)
@@ -328,16 +339,12 @@ public sealed partial class MainViewModel : ObservableRecipient
                 if (prBranchVersion.Minor < maxMinorVersion)
                 {
                     // Count up all support versions
-                    for (int i = prBranchVersion.Minor + 1; i < maxMinorVersion; i++)
+                    for (int i = prBranchVersion.Minor + 1; i <= maxMinorVersion; i++)
                         result.Add(new(prBranchVersion.Major, i));
                 }
 
-                // When we are on 4.19 already and max version is 4.19, then dont add 4.19
-                if (prBranchVersion.Minor < maxMinorVersion)
-                {
-                    // Add max version
-                    result.Add(new(prBranchVersion.Major, maxMinorVersion, hasDeploy ? BranchType.deploy : BranchType.support));
-                }
+                if (deployBranch is not null)
+                    result.Add(deployBranch);
 
                 // Add stable
                 result.Add(new(0, 0, BranchType.stable));
@@ -371,6 +378,9 @@ public sealed partial class MainViewModel : ObservableRecipient
                     // We are on stable, so we need to also include the max support version
                     downMergeMaxMinorVersion = maxMinorVersion + 1;
                     downMergeMajorVersion = maxMajorVersion;
+
+                    if (deployBranch is not null)
+                        result.Add(deployBranch);
                 }
 
                 if (downMergeMaxMinorVersion > minMinorVersion)
