@@ -99,7 +99,10 @@ public sealed class ScrollToBehavior : Behavior<ListView>
         if (!Enabled)
             return;
 
-        if (VisualTreeHelper.GetChild(AssociatedObject, 0) is ScrollViewer scrollViewer)
+        // Not allowed to call VisualTreeHelper.GetChild if VisualChildrenCount is 0
+        var visualChildrenCount = (int?)typeof(ListView).GetProperty("VisualChildrenCount")?.GetValue(AssociatedObject);
+
+        if (AssociatedObject.HasItems && visualChildrenCount is > 0 && VisualTreeHelper.GetChild(AssociatedObject, 0) is ScrollViewer scrollViewer)
         {
             switch (ScrollMode)
             {

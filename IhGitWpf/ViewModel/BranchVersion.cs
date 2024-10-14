@@ -23,21 +23,18 @@ public partial class BranchVersion : ObservableObject
     [ObservableProperty]
     private int minor;
 
-    public BranchVersion(string branchVersion)
+    public static BranchVersion? TryParse(string branchVersion)
     {
         var matches = BranchRegex().Matches(branchVersion);
         var groups = matches.FirstOrDefault()?.Groups;
 
         if (groups is null || groups == null || groups.Count != 3)
-        {
-            MessageBox.Show(branchVersion, "Base branch regex doesnt match");
-            return;
-        }
+            return null;
 
         var branch = groups[0].Value;
         var branchName = groups[1].Value;
 
-        BranchType = branchName switch
+        var branchType = branchName switch
         {
             "support" => BranchType.support,
             "deploy" => BranchType.deploy,
@@ -45,16 +42,33 @@ public partial class BranchVersion : ObservableObject
             _ => BranchType.unknown,
         };
 
-        if (BranchType == BranchType.support || BranchType == BranchType.deploy)
+        int major = 0;
+        int minor = 0;
+
+        if (branchType == BranchType.support || branchType == BranchType.deploy)
         {
             var versionNumber = groups[2].Value.Trim('v');
             var split = versionNumber.Split('.', StringSplitOptions.RemoveEmptyEntries);
-            if (split.Length > 0 && int.TryParse(split[0], out major) && int.TryParse(split[1], out var minor))
-            {
-                Major = major;
-                Minor = minor;
-            }
+            if (split.Length > 0 && int.TryParse(split[0], out major) && int.TryParse(split[1], out minor))
+            { }
         }
+
+        return new BranchVersion(major, minor, branchType);
+    }
+
+    public BranchVersion(string branchVersion)
+    {
+        var parsed = TryParse(branchVersion);
+
+        if (parsed is null)
+        {
+            MessageBox.Show(branchVersion, "Base branch regex doesn't match");
+            return;
+        }
+
+        BranchType = parsed.BranchType;
+        Major = parsed.Major;
+        Minor = parsed.Minor;
     }
 
     public BranchVersion(int major, int minor, BranchType branchType = BranchType.support)
