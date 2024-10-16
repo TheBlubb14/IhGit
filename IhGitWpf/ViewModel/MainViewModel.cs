@@ -21,14 +21,24 @@ using System.IO;
 using System.Windows.Threading;
 using IhGitWpf.Properties;
 using System.Windows.Data;
+using Octokit.GraphQL;
 
 namespace IhGitWpf.ViewModel;
 
 public sealed partial class MainViewModel : ObservableRecipient
 {
+    private const string PRODUCT = "IhGit";
+    private const string ORGA = "airsphere-gmbh";
+    private const string REPO = "PaxControl";
     private const long REPO_ID = 194316446;
     private const string DOWNMERGE_LABEL = "downmerge";
     private const string UPMERGE_LABEL = "upmerge";
+
+    private int maxMajorVersion = 4;
+    private int maxMinorVersion = 20;
+    private int minMajorVersion = 4;
+    private int minMinorVersion = 15;
+    private bool hasDeploy;
 
     [ObservableProperty]
     private int minSupportMajorVersion = Settings.Default.MinSupportMajorVersion;
@@ -41,15 +51,17 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty]
     private int minSupportMinorVersion = Settings.Default.MinSupportMinorVersion;
 
-    private int maxMajorVersion = 4;
-    private int maxMinorVersion = 20;
-    private int minMajorVersion = 4;
-    private int minMinorVersion = 15;
-    private bool hasDeploy;
-
     partial void OnMinSupportMinorVersionChanged(int value)
     {
         Settings.Default.MinSupportMinorVersion = value;
+    }
+
+    [ObservableProperty]
+    private bool addToMergeQueue = Settings.Default.AddToMergeQueue;
+
+    partial void OnAddToMergeQueueChanged(bool value)
+    {
+        Settings.Default.AddToMergeQueue = value;
     }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(LoadPrCommand))]
@@ -215,7 +227,7 @@ public sealed partial class MainViewModel : ObservableRecipient
 
         ClearUi();
 
-        var client = new GitHubClient(new ProductHeaderValue("IhGit"));
+        var client = new GitHubClient(new Octokit.ProductHeaderValue(PRODUCT));
         var tokenAuth = new Octokit.Credentials(GitHubToken);
         client.Credentials = tokenAuth;
 
@@ -791,7 +803,7 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     private async Task PullRequest(BranchVersion newBranchVersion, bool isUpMerge)
     {
-        var client = new GitHubClient(new ProductHeaderValue("IhGit"));
+        var client = new GitHubClient(new Octokit.ProductHeaderValue(PRODUCT));
         var tokenAuth = new Octokit.Credentials(GitHubToken);
         client.Credentials = tokenAuth;
 
@@ -819,6 +831,9 @@ public sealed partial class MainViewModel : ObservableRecipient
         var mergeLabel = isUpMerge ? UPMERGE_LABEL : DOWNMERGE_LABEL;
         newPr = await client.PullRequest.ReviewRequest.Create(REPO_ID, newPr.Number, new PullRequestReviewRequest([.. Reviewers.Where(x => x.IsSelected).Select(x => x.User.Login)], []));
         await client.Issue.Labels.AddToIssue(REPO_ID, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name), mergeLabel]);
+
+        if (AddToMergeQueue)
+            await MergeQueue();
 
         OpenUrl(newPr.HtmlUrl);
     }
@@ -894,5 +909,31 @@ public sealed partial class MainViewModel : ObservableRecipient
     private async Task Push()
     {
         await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName().ToString());
+    }
+
+    private async Task MergeQueue()
+    {
+        if (Pr is null)
+            return;
+
+        var connection = new Octokit.GraphQL.Connection(new(PRODUCT), GitHubToken);
+
+        var hasMergeQueueQuery = new Query()
+            .Repository(new(REPO), new(ORGA))
+            .MergeQueue(new(Pr.Base.Ref))
+            .Select(x => x.Id);
+
+        var hasMergeQueue = await connection.Run(hasMergeQueueQuery);
+        if (hasMergeQueue is { Value.Length: > 0 })
+        {
+            var enable = new Mutation()
+                .EnablePullRequestAutoMerge(new Octokit.GraphQL.Model.EnablePullRequestAutoMergeInput()
+                {
+                    PullRequestId = new(Pr.NodeId),
+                })
+                .Select(x => x.PullRequest.Number);
+
+            _ = await connection.Run(enable);
+        }
     }
 }
