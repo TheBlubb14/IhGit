@@ -418,7 +418,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <PasswordBox Grid.Row="0"
@@ -477,6 +477,11 @@
                                           Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                           Text="{Binding MinSupportMinorVersion, UpdateSourceTrigger=LostFocus, Mode=TwoWay}" />
                 </StackPanel>
+                <CheckBox Grid.Row="4"
+                          Grid.Column="0"
+                          IsChecked="{Binding AddToMergeQueue}"
+                          Content="Add to merge queue"
+                          ToolTip="Adds the created pull request automatically to the merge queue"/>
             </Grid>
         </TabItem>
     </TabControl>

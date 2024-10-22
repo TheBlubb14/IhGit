@@ -94,5 +94,17 @@ namespace IhGitWpf.Properties {
                 this["MinSupportMajorVersion"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool AddToMergeQueue {
+            get {
+                return ((bool)(this["AddToMergeQueue"]));
+            }
+            set {
+                this["AddToMergeQueue"] = value;
+            }
+        }
     }
 }
