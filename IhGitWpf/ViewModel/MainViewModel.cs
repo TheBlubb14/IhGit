@@ -833,7 +833,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         await client.Issue.Labels.AddToIssue(REPO_ID, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name), mergeLabel]);
 
         if (AddToMergeQueue)
-            await MergeQueue();
+            await MergeQueue(newPr);
 
         OpenUrl(newPr.HtmlUrl);
     }
@@ -911,16 +911,16 @@ public sealed partial class MainViewModel : ObservableRecipient
         await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName().ToString());
     }
 
-    private async Task MergeQueue()
+    private async Task MergeQueue(PullRequest? inputPr)
     {
-        if (Pr is null)
+        if (inputPr is null)
             return;
 
         var connection = new Octokit.GraphQL.Connection(new(PRODUCT), GitHubToken);
 
         var hasMergeQueueQuery = new Query()
             .Repository(new(REPO), new(ORGA))
-            .MergeQueue(new(Pr.Base.Ref))
+            .MergeQueue(new(inputPr.Base.Ref))
             .Select(x => x.Id);
 
         var hasMergeQueue = await connection.Run(hasMergeQueueQuery);
@@ -929,11 +929,15 @@ public sealed partial class MainViewModel : ObservableRecipient
             var enable = new Mutation()
                 .EnablePullRequestAutoMerge(new Octokit.GraphQL.Model.EnablePullRequestAutoMergeInput()
                 {
-                    PullRequestId = new(Pr.NodeId),
+                    PullRequestId = new(inputPr.NodeId),
                 })
                 .Select(x => x.PullRequest.Number);
 
             _ = await connection.Run(enable);
+        }
+        else
+        {
+            Log($"Found no merge queue for PR #{inputPr.Number} with base branch {inputPr.Base.Ref}");
         }
     }
 }
