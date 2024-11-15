@@ -442,6 +442,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         Reviewers.Clear();
         LabelFilter = "";
         Labels.Clear();
+        CurrentVersion = "";
 
         if (clearAll)
         {
