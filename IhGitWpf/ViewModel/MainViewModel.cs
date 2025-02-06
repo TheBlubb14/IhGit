@@ -254,12 +254,14 @@ public sealed partial class MainViewModel : ObservableRecipient
         var requestedReviews = await client.PullRequest.ReviewRequest.Get(REPO_ID, prNum);
         var reviews = await client.PullRequest.Review.GetAll(REPO_ID, prNum);
 
-        var allReviewers = Enumerable.Concat(requestedReviews.Users, reviews.Select(x => x.User)).Select(x => new Reviewer(x)).Distinct();
+        // Exclude commented, you be the author of the pr
+        var allReviewers = Enumerable.Concat(requestedReviews.Users, reviews.Where(x => x.State.Value != PullRequestReviewState.Commented).Select(x => x.User)).Select(x => new Reviewer(x)).Distinct();
 
         Reviewers = [.. orgaUsers.Select(x =>
         {
             var reviewer = new Reviewer(x);
             reviewer.IsSelected = allReviewers.Contains(reviewer);
+
             return reviewer;
         })];
 
