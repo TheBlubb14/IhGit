@@ -179,7 +179,6 @@
                                                                FontWeight="Bold"
                                                                Text="{Binding Value.Sha}" />
                                                     <TextBlock Grid.Row="1"
-                                                               Width="{Binding ElementName=a, Path=ActualWidth}"
                                                                Text="{Binding Title}"
                                                                TextTrimming="CharacterEllipsis"
                                                                ToolTip="{Binding Value.Commit.Message}" />
