@@ -817,9 +817,10 @@ public sealed partial class MainViewModel : ObservableRecipient
         var branchName = newBranchVersion.GetRemoteBranchName();
         var newBranchName = newBranchVersion.GetBranchNameForChanges(FeatureName);
 
+        var mergeLabel = isUpMerge ? UPMERGE_LABEL : DOWNMERGE_LABEL;
         var newPr = await client.PullRequest.Create(REPO_ID, new NewPullRequest(title, newBranchName, branchName)
         {
-            Body = Body,
+            Body = $"{Body}<sub>IhGit {mergeLabel} from #{Pr?.Number}</sub>",
         });
 
         if (newPr is null)
@@ -831,7 +832,6 @@ public sealed partial class MainViewModel : ObservableRecipient
             return;
         }
 
-        var mergeLabel = isUpMerge ? UPMERGE_LABEL : DOWNMERGE_LABEL;
         newPr = await client.PullRequest.ReviewRequest.Create(REPO_ID, newPr.Number, new PullRequestReviewRequest([.. Reviewers.Where(x => x.IsSelected).Select(x => x.User.Login)], []));
         await client.Issue.Labels.AddToIssue(REPO_ID, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name), mergeLabel]);
 
