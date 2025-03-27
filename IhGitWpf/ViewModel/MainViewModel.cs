@@ -818,9 +818,13 @@ public sealed partial class MainViewModel : ObservableRecipient
         var newBranchName = newBranchVersion.GetBranchNameForChanges(FeatureName);
 
         var mergeLabel = isUpMerge ? UPMERGE_LABEL : DOWNMERGE_LABEL;
+
+        var newLine = Body.EndsWith('\n') ? "" : "\n";
+        var newBody = $"{Body}{newLine}<sub>IhGit {mergeLabel} from #{Pr?.Number}</sub>";
+
         var newPr = await client.PullRequest.Create(REPO_ID, new NewPullRequest(title, newBranchName, branchName)
         {
-            Body = $"{Body}<sub>IhGit {mergeLabel} from #{Pr?.Number}</sub>",
+            Body = newBody,
         });
 
         if (newPr is null)
