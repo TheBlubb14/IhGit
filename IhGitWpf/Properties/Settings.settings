@@ -23,5 +23,8 @@
     <Setting Name="AddToMergeQueue" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
+    <Setting Name="ExternalEditorPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">%localappdata%/Programs/Microsoft VS Code/Code.exe</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

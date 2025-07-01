@@ -22,6 +22,7 @@ using System.Windows.Threading;
 using IhGitWpf.Properties;
 using System.Windows.Data;
 using Octokit.GraphQL;
+using MaterialDesignThemes.Wpf;
 
 namespace IhGitWpf.ViewModel;
 
@@ -146,6 +147,14 @@ public sealed partial class MainViewModel : ObservableRecipient
         Settings.Default.RepoPath = value;
     }
 
+    [ObservableProperty]
+    private string externalEditorPath = Settings.Default.ExternalEditorPath;
+
+    partial void OnExternalEditorPathChanged(string value)
+    {
+        Settings.Default.ExternalEditorPath = value;
+    }
+
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private string featureName = "";
 
@@ -166,7 +175,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         if (oldValue is not null)
         {
-            ((INotifyPropertyChanged)newValue).PropertyChanged -= UpMergeVersionsChanged;
+            ((INotifyPropertyChanged)oldValue).PropertyChanged -= UpMergeVersionsChanged;
         }
 
         if (newValue is not null)
@@ -179,7 +188,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         if (oldValue is not null)
         {
-            ((INotifyPropertyChanged)newValue).PropertyChanged -= DownMergeVersionsChanged;
+            ((INotifyPropertyChanged)oldValue).PropertyChanged -= DownMergeVersionsChanged;
         }
 
         if (newValue is not null)
@@ -192,7 +201,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         if (oldValue is not null)
         {
-            ((INotifyPropertyChanged)newValue).PropertyChanged -= CommitsChanged;
+            ((INotifyPropertyChanged)oldValue).PropertyChanged -= CommitsChanged;
         }
 
         if (newValue is not null)
@@ -222,6 +231,19 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(IsPrNumberNumber))]
     private async Task LoadPr()
     {
+        if (PrNumber == "0")
+        {
+            var vm = new MergeConflictViewModel();
+            vm.Items.Add(new() { Name = "main.yml", Path = @".github\workflows\", NumberOfConflicts = 1, FullPath = @"D:\Entwicklung\GitHub\Projects\ActionsTest\.github\workflows\main.yml" });
+            vm.Items.Add(new() { Name = "main1.yml", Path = @".github\workflows\", NumberOfConflicts = 3 });
+            var mergeConflict = new Dialogs.MergeConflict()
+            {
+                DataContext = vm
+            };
+            var res = await DialogHost.Show(mergeConflict);
+        }
+        return;
+
         if (!int.TryParse(PrNumber, out var prNum))
             return;
 
