@@ -16,19 +16,25 @@ public partial class MergeConflict : ObservableObject
     [ObservableProperty]
     private string? _path;
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(OpenWithDefaultProgramCommand)), NotifyCanExecuteChangedFor(nameof(ShowInExplorerCommand)), NotifyCanExecuteChangedFor(nameof(OpenCommand))]
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(OpenWithDefaultProgramCommand), nameof(ShowInExplorerCommand), nameof(OpenCommand))]
     private string? _fullPath;
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(Description)), NotifyPropertyChangedFor(nameof(IsResolved)), NotifyPropertyChangedFor(nameof(DescriptionColor))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Description), nameof(IsResolved), nameof(DescriptionColor), nameof(OpenButtonVisible), nameof(ResolveButtonVisible))]
     private int _numberOfConflicts;
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(Description))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Description), nameof(OpenButtonVisible), nameof(ResolveButtonVisible))]
     private bool _deletedOnRemote;
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Description))]
     private string? _remoteName;
 
     public bool IsResolved => NumberOfConflicts == 0;
+
+    public bool OpenButtonVisible => !IsResolved && !DeletedOnRemote;
+
+    public bool ResolveButtonVisible => !IsResolved && DeletedOnRemote;
+
+    public MergeConflictAction DeletedOnRemoteAction { get; private set; }
 
     public SolidColorBrush DescriptionColor => NumberOfConflicts > 0 ? _warningBrush : _okBrush;
 
@@ -41,6 +47,16 @@ public partial class MergeConflict : ObservableObject
     {
         get
         {
+            if (IsResolved && DeletedOnRemote)
+            {
+                return DeletedOnRemoteAction switch
+                {
+                    MergeConflictAction.DoNotIncludeFile => "File will not be included in the merge",
+                    MergeConflictAction.UseModifiedFile => "Modified file will be used",
+                    _ => "Unknown"
+                };
+            }
+
             if (DeletedOnRemote)
             {
                 return $"File does not exist on {RemoteName}";
@@ -92,6 +108,8 @@ public partial class MergeConflict : ObservableObject
 
         Process.Start(new ProcessStartInfo(directory)
         {
+            FileName = "explorer.exe",
+            Arguments = $"/select,\"{FullPath}\"",
             UseShellExecute = true
         });
     }
@@ -104,4 +122,25 @@ public partial class MergeConflict : ObservableObject
     {
         NumberOfConflicts++; // Simulate reintroducing the conflict
     }
+
+    [RelayCommand]
+    private void DoNotIncludeFile()
+    {
+        DeletedOnRemoteAction = MergeConflictAction.DoNotIncludeFile;
+        NumberOfConflicts = 0;
+    }
+
+    [RelayCommand]
+    private void UseModifiedFile()
+    {
+        DeletedOnRemoteAction = MergeConflictAction.UseModifiedFile;
+        NumberOfConflicts = 0;
+    }
+}
+
+public enum MergeConflictAction
+{
+    None,
+    DoNotIncludeFile,
+    UseModifiedFile,
 }

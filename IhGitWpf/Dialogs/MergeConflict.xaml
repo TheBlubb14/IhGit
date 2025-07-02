@@ -81,7 +81,7 @@
                                     <materialDesign:SplitButton VerticalAlignment="Bottom"
                                                                 Content="Open"
                                                                 Command="{Binding OpenCommand}"
-                                                                Visibility="{Binding IsResolved, Converter={x:Static materialDesignConverters:BooleanToVisibilityConverter.NotCollapsedInstance}}">
+                                                                Visibility="{Binding OpenButtonVisible, Converter={x:Static materialDesignConverters:BooleanToVisibilityConverter.CollapsedInstance}}">
                                         <materialDesign:SplitButton.PopupContent>
                                             <StackPanel Margin="8">
                                                 <Button Content="Open with default program"
@@ -90,6 +90,20 @@
                                                 <Button Content="Show in explorer"
                                                         Style="{StaticResource MaterialDesignFlatButton}"
                                                         Command="{Binding ShowInExplorerCommand}"/>
+                                            </StackPanel>
+                                        </materialDesign:SplitButton.PopupContent>
+                                    </materialDesign:SplitButton>
+                                    <materialDesign:SplitButton VerticalAlignment="Bottom"
+                                                                Content="Resolve"
+                                                                Visibility="{Binding ResolveButtonVisible, Converter={x:Static materialDesignConverters:BooleanToVisibilityConverter.CollapsedInstance}}">
+                                        <materialDesign:SplitButton.PopupContent>
+                                            <StackPanel Margin="8">
+                                                <Button Content="Do not include this file"
+                                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                                        Command="{Binding DoNotIncludeFileCommand}" />
+                                                <Button Content="Use the modified file"
+                                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                                        Command="{Binding UseModifiedFileCommand}" />
                                             </StackPanel>
                                         </materialDesign:SplitButton.PopupContent>
                                     </materialDesign:SplitButton>

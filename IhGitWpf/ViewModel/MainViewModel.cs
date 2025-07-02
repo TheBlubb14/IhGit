@@ -234,8 +234,29 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (PrNumber == "0")
         {
             var vm = new MergeConflictViewModel();
-            vm.Items.Add(new() { Name = "ClientProfiles.aspx", Path = @"Code\PaxControl.Server\Admin\Config\", NumberOfConflicts = 1, FullPath = @"D:\repos\PaxControl2\Code\PaxControl.Server\Admin\Config\ClientProfiles.aspx" });
-            vm.Items.Add(new() { Name = "ClientProfiles1.aspx", Path = @"Code\PaxControl.Server\Admin\Config\", NumberOfConflicts = 3 });
+            vm.Items.Add(new()
+            {
+                Name = "main1.yml",
+                Path = @".github\workflows\",
+                NumberOfConflicts = 1,
+                FullPath = @"D:\Entwicklung\GitHub\Projects\ActionsTest\.github\workflows\main.yml"
+            });
+            vm.Items.Add(new()
+            {
+                Name = "main1.yml",
+                Path = @".github\workflows\",
+                NumberOfConflicts = 3,
+                FullPath = @"D:\Entwicklung\GitHub\Projects\ActionsTest\.github\workflows\main.yml"
+            });
+            vm.Items.Add(new()
+            {
+                Name = "main1.yml",
+                Path = @".github\workflows\",
+                NumberOfConflicts = 1,
+                FullPath = @"D:\Entwicklung\GitHub\Projects\ActionsTest\.github\workflows\main.yml",
+                DeletedOnRemote = true,
+                RemoteName = "feature/MergeConflict"
+            });
             var mergeConflict = new Dialogs.MergeConflict()
             {
                 DataContext = vm
@@ -799,8 +820,7 @@ public sealed partial class MainViewModel : ObservableRecipient
                                 });
                             }
                         }
-                        vm.Items.Add(new() { Name = "ClientProfiles.aspx", Path = @"Code\PaxControl.Server\Admin\Config\", NumberOfConflicts = 1, FullPath = @"D:\repos\PaxControl2\Code\PaxControl.Server\Admin\Config\ClientProfiles.aspx" });
-                        vm.Items.Add(new() { Name = "ClientProfiles1.aspx", Path = @"Code\PaxControl.Server\Admin\Config\", NumberOfConflicts = 3 });
+
                         var mergeConflict = new Dialogs.MergeConflict()
                         {
                             DataContext = vm
