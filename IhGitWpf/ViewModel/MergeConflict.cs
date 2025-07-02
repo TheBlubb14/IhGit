@@ -22,6 +22,12 @@ public partial class MergeConflict : ObservableObject
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Description)), NotifyPropertyChangedFor(nameof(IsResolved)), NotifyPropertyChangedFor(nameof(DescriptionColor))]
     private int _numberOfConflicts;
 
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Description))]
+    private bool _deletedOnRemote;
+
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Description))]
+    private string? _remoteName;
+
     public bool IsResolved => NumberOfConflicts == 0;
 
     public SolidColorBrush DescriptionColor => NumberOfConflicts > 0 ? _warningBrush : _okBrush;
@@ -35,6 +41,11 @@ public partial class MergeConflict : ObservableObject
     {
         get
         {
+            if (DeletedOnRemote)
+            {
+                return $"File does not exist on {RemoteName}";
+            }
+
             return NumberOfConflicts switch
             {
                 0 => "No conflicts remaining",

@@ -234,15 +234,15 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (PrNumber == "0")
         {
             var vm = new MergeConflictViewModel();
-            vm.Items.Add(new() { Name = "main.yml", Path = @".github\workflows\", NumberOfConflicts = 1, FullPath = @"D:\Entwicklung\GitHub\Projects\ActionsTest\.github\workflows\main.yml" });
-            vm.Items.Add(new() { Name = "main1.yml", Path = @".github\workflows\", NumberOfConflicts = 3 });
+            vm.Items.Add(new() { Name = "ClientProfiles.aspx", Path = @"Code\PaxControl.Server\Admin\Config\", NumberOfConflicts = 1, FullPath = @"D:\repos\PaxControl2\Code\PaxControl.Server\Admin\Config\ClientProfiles.aspx" });
+            vm.Items.Add(new() { Name = "ClientProfiles1.aspx", Path = @"Code\PaxControl.Server\Admin\Config\", NumberOfConflicts = 3 });
             var mergeConflict = new Dialogs.MergeConflict()
             {
                 DataContext = vm
             };
             var res = await DialogHost.Show(mergeConflict);
+            return;
         }
-        return;
 
         if (!int.TryParse(PrNumber, out var prNum))
             return;
@@ -770,6 +770,43 @@ public sealed partial class MainViewModel : ObservableRecipient
                         using var repo = new Repository(RepoPath);
                         var conflicts = repo.Index.Conflicts.Cast<Conflict>();
                         var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x?.Ancestor?.Path ?? ""));
+
+                        var vm = new MergeConflictViewModel();
+                        foreach (var conflict in conflicts)
+                        {
+                            // conflict.Ours is the destination branch
+                            // conflict.Theirs is the branch is is currently being upmerged
+                            // If Ours is null, the file doesnt exist anymore on remote
+                            var ancestorPath = conflict?.Ancestor?.Path ?? "";
+                            var name = Path.GetFileName(ancestorPath);
+                            var path = Path.GetDirectoryName(ancestorPath);
+                            var existing = vm.Items.FirstOrDefault(x => x.Name == name);
+                            var fullPath = Path.Combine(RepoPath, ancestorPath);
+                            if (existing is not null)
+                            {
+                                existing.NumberOfConflicts++;
+                            }
+                            else
+                            {
+                                vm.Items.Add(new()
+                                {
+                                    Name = name,
+                                    Path = path,
+                                    NumberOfConflicts = 1,
+                                    FullPath = fullPath,
+                                    RemoteName = repo.Head.FriendlyName,
+                                    DeletedOnRemote = conflict?.Ours is null,
+                                });
+                            }
+                        }
+                        vm.Items.Add(new() { Name = "ClientProfiles.aspx", Path = @"Code\PaxControl.Server\Admin\Config\", NumberOfConflicts = 1, FullPath = @"D:\repos\PaxControl2\Code\PaxControl.Server\Admin\Config\ClientProfiles.aspx" });
+                        vm.Items.Add(new() { Name = "ClientProfiles1.aspx", Path = @"Code\PaxControl.Server\Admin\Config\", NumberOfConflicts = 3 });
+                        var mergeConflict = new Dialogs.MergeConflict()
+                        {
+                            DataContext = vm
+                        };
+                        var res = await DialogHost.Show(mergeConflict);
+
                         var mbox = MessageBox.Show(
                             "Waiting for merge conflicts to be solved..\r\n" +
                             "Yes: try-again\r\n" +
