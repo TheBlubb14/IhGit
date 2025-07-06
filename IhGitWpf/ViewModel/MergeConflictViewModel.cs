@@ -1,12 +1,13 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
+using System;
 using System.ComponentModel;
 using System.Linq;
 
 namespace IhGitWpf.ViewModel;
 
-public partial class MergeConflictViewModel : ObservableObject
+public partial class MergeConflictViewModel : ObservableObject, IDisposable
 {
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ItemsDescription)), NotifyCanExecuteChangedFor(nameof(ContinueCommand))]
     private ObservableCollectionEx<MergeConflict> _items = [];
@@ -41,12 +42,6 @@ public partial class MergeConflictViewModel : ObservableObject
     private int notResolvedItemsCount => Items.Count(x => !x.IsResolved);
     public string ItemsDescription => $"{notResolvedItemsCount} conflicted file{(notResolvedItemsCount != 1 ? "s" : "")}";
 
-    [RelayCommand]
-    private void OpenItem(MergeConflict item)
-    {
-
-    }
-
     private bool CanContinue()
         => Items.All(i => i.IsResolved);
 
@@ -54,6 +49,15 @@ public partial class MergeConflictViewModel : ObservableObject
     private void Continue()
     {
         DialogHost.CloseDialogCommand.Execute(this, null);
+    }
+
+    public void Dispose()
+    {
+        foreach (var item in Items)
+        {
+            item.PropertyChanged -= ItemsChanged;
+            item.Dispose();
+        }
     }
 }
 

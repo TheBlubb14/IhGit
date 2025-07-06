@@ -1,20 +1,28 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using IhGitWpf.Properties;
+using LibGit2Sharp;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows.Media;
 
 namespace IhGitWpf.ViewModel;
 
-public partial class MergeConflict : ObservableObject
+public partial class MergeConflict : ObservableObject, IDisposable
 {
     [ObservableProperty]
     private string? _name;
 
     [ObservableProperty]
     private string? _path;
+
+    [ObservableProperty]
+    private string? _repoPath;
+
+    [ObservableProperty]
+    private Conflict? conflict;
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(OpenWithDefaultProgramCommand), nameof(ShowInExplorerCommand), nameof(OpenCommand))]
     private string? _fullPath;
@@ -67,6 +75,29 @@ public partial class MergeConflict : ObservableObject
                 0 => "No conflicts remaining",
                 1 => "1 conflict",
                 _ => $"{NumberOfConflicts} conflicts"
+            };
+        }
+    }
+    public event EventHandler? FileChanged;
+
+    private readonly FileSystemWatcher? _fileWatcher = null;
+
+    public MergeConflict()
+    {
+        if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(FullPath))
+        {
+            _fileWatcher = new FileSystemWatcher
+            {
+                Path = System.IO.Path.GetDirectoryName(FullPath) ?? "",
+                Filter = System.IO.Path.GetFileName(FullPath),
+            };
+            _fileWatcher.Changed += (sender, args) =>
+            {
+                //FileChanged?.Invoke(this, EventArgs.Empty);
+
+                using var repo = new Repository(RepoPath);
+                var conflicts = repo.Index.Conflicts.Cast<Conflict>();
+                ;
             };
         }
     }
@@ -135,6 +166,15 @@ public partial class MergeConflict : ObservableObject
     {
         DeletedOnRemoteAction = MergeConflictAction.UseModifiedFile;
         NumberOfConflicts = 0;
+    }
+
+    public void Dispose()
+    {
+        if (_fileWatcher is not null)
+        {
+            _fileWatcher.EnableRaisingEvents = false;
+            _fileWatcher.Dispose();
+        }
     }
 }
 

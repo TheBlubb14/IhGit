@@ -786,72 +786,8 @@ public sealed partial class MainViewModel : ObservableRecipient
 
                 if (hasConflicts)
                 {
-                    do
-                    {
-                        using var repo = new Repository(RepoPath);
-                        var conflicts = repo.Index.Conflicts.Cast<Conflict>();
-                        var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x?.Ancestor?.Path ?? ""));
-
-                        var vm = new MergeConflictViewModel();
-                        foreach (var conflict in conflicts)
-                        {
-                            // conflict.Ours is the destination branch
-                            // conflict.Theirs is the branch is is currently being upmerged
-                            // If Ours is null, the file doesnt exist anymore on remote
-                            var ancestorPath = conflict?.Ancestor?.Path ?? "";
-                            var name = Path.GetFileName(ancestorPath);
-                            var path = Path.GetDirectoryName(ancestorPath);
-                            var existing = vm.Items.FirstOrDefault(x => x.Name == name);
-                            var fullPath = Path.Combine(RepoPath, ancestorPath);
-                            if (existing is not null)
-                            {
-                                existing.NumberOfConflicts++;
-                            }
-                            else
-                            {
-                                vm.Items.Add(new()
-                                {
-                                    Name = name,
-                                    Path = path,
-                                    NumberOfConflicts = 1,
-                                    FullPath = fullPath,
-                                    RemoteName = repo.Head.FriendlyName,
-                                    DeletedOnRemote = conflict?.Ours is null,
-                                });
-                            }
-                        }
-
-                        var mergeConflict = new Dialogs.MergeConflict()
-                        {
-                            DataContext = vm
-                        };
-                        var res = await DialogHost.Show(mergeConflict);
-
-                        var mbox = MessageBox.Show(
-                            "Waiting for merge conflicts to be solved..\r\n" +
-                            "Yes: try-again\r\n" +
-                            "No: cherry-pick --continue\r\n" +
-                            "Cancel: Abort" + files,
-                            "cherry pick failed",
-                            MessageBoxButton.YesNoCancel);
-
-                        switch (mbox)
-                        {
-                            case MessageBoxResult.Yes:
-                                // try again
-                                break;
-
-                            case MessageBoxResult.No:
-                                // cherry pick continue
-                                await Git(new("add . failed", ShowDialog: false), "add", ".");
-                                await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
-                                break;
-
-                            case MessageBoxResult.Cancel:
-                            default:
-                                return false;
-                        }
-                    } while (HasConflicts());
+                    if (!await ResolveMergeConflicts())
+                        return false;
                 }
             }
             await Push();
@@ -866,10 +802,89 @@ public sealed partial class MainViewModel : ObservableRecipient
         return true;
     }
 
+    private async Task<bool> ResolveMergeConflicts()
+    {
+        if (!HasConflicts())
+            return true;
+
+        do
+        {
+            using var repo = new Repository(RepoPath);
+            var conflicts = repo.Index.Conflicts.Cast<Conflict>();
+            var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x?.Ancestor?.Path ?? ""));
+
+            using var vm = new MergeConflictViewModel();
+            foreach (var conflict in conflicts)
+            {
+                // conflict.Ours is the destination branch
+                // conflict.Theirs is the branch is is currently being upmerged
+                // If Ours is null, the file doesnt exist anymore on remote
+                var ancestorPath = conflict?.Ancestor?.Path ?? "";
+                var name = Path.GetFileName(ancestorPath);
+                var path = Path.GetDirectoryName(ancestorPath);
+                var existing = vm.Items.FirstOrDefault(x => x.Name == name);
+                var fullPath = Path.Combine(RepoPath, ancestorPath);
+                if (existing is not null)
+                {
+                    existing.NumberOfConflicts++;
+                }
+                else
+                {
+                    vm.Items.Add(new()
+                    {
+                        Conflict = conflict,
+                        Name = name,
+                        Path = path,
+                        RepoPath = RepoPath,
+                        NumberOfConflicts = 1,
+                        FullPath = fullPath,
+                        RemoteName = repo.Head.FriendlyName,
+                        DeletedOnRemote = conflict?.Ours is null,
+                    });
+                }
+            }
+
+            var mergeConflict = new Dialogs.MergeConflict()
+            {
+                DataContext = vm
+            };
+            var res = await DialogHost.Show(mergeConflict);
+
+            var mbox = MessageBox.Show(
+                "Waiting for merge conflicts to be solved..\r\n" +
+                "Yes: try-again\r\n" +
+                "No: cherry-pick --continue\r\n" +
+                "Cancel: Abort" + files,
+                "cherry pick failed",
+                MessageBoxButton.YesNoCancel);
+
+            switch (mbox)
+            {
+                case MessageBoxResult.Yes:
+                    // try again
+                    break;
+
+                case MessageBoxResult.No:
+                    // cherry pick continue
+                    await Git(new("add . failed", ShowDialog: false), "add", ".");
+                    await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
+                    break;
+
+                case MessageBoxResult.Cancel:
+                default:
+                    return false;
+            }
+        } while (HasConflicts());
+
+        return true;
+    }
+
     [RelayCommand(CanExecute = nameof(CanStatus))]
     private async Task Status()
     {
         await Git(new("git status failed"), "status");
+        Fetch();
+        await ResolveMergeConflicts();
     }
 
     private bool CanStatus()
