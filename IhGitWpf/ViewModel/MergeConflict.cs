@@ -1,12 +1,13 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using IhGitWpf.Properties;
-using LibGit2Sharp;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace IhGitWpf.ViewModel;
 
@@ -21,11 +22,25 @@ public partial class MergeConflict : ObservableObject, IDisposable
     [ObservableProperty]
     private string? _repoPath;
 
-    [ObservableProperty]
-    private Conflict? conflict;
-
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(OpenWithDefaultProgramCommand), nameof(ShowInExplorerCommand), nameof(OpenCommand))]
     private string? _fullPath;
+
+    partial void OnFullPathChanged(string? value)
+    {
+        if (_fileWatcher is null)
+            return;
+
+        if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(value))
+        {
+            _fileWatcher.Path = System.IO.Path.GetDirectoryName(value) ?? "";
+            _fileWatcher.Filter = System.IO.Path.GetFileName(value);
+            _fileWatcher.EnableRaisingEvents = true;
+        }
+        else
+        {
+            _fileWatcher.EnableRaisingEvents = false;
+        }
+    }
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Description), nameof(IsResolved), nameof(DescriptionColor), nameof(OpenButtonVisible), nameof(ResolveButtonVisible))]
     private int _numberOfConflicts;
@@ -80,26 +95,32 @@ public partial class MergeConflict : ObservableObject, IDisposable
     }
     public event EventHandler? FileChanged;
 
-    private readonly FileSystemWatcher? _fileWatcher = null;
+    private readonly FileSystemWatcher _fileWatcher;
+    private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
 
     public MergeConflict()
     {
-        if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(FullPath))
+        _fileWatcher = new();
+        _fileWatcher.Changed += (sender, args) =>
         {
-            _fileWatcher = new FileSystemWatcher
-            {
-                Path = System.IO.Path.GetDirectoryName(FullPath) ?? "",
-                Filter = System.IO.Path.GetFileName(FullPath),
-            };
-            _fileWatcher.Changed += (sender, args) =>
-            {
-                //FileChanged?.Invoke(this, EventArgs.Empty);
+            var content = ReadAllText(args.FullPath);
+            var conflictCounters = content
+            .Split([Environment.NewLine], StringSplitOptions.None)
+            .Count(line => 
+            line.StartsWith("<<<<<<<") || 
+            line.StartsWith(">>>>>>>") || 
+            line.StartsWith("====="));
+ 
+            dispatcher.Invoke(() =>
+            NumberOfConflicts = (int)Math.Ceiling(conflictCounters / 3d));
+        };
+    }
 
-                using var repo = new Repository(RepoPath);
-                var conflicts = repo.Index.Conflicts.Cast<Conflict>();
-                ;
-            };
-        }
+    private static string ReadAllText(string file, Encoding? encoding = null)
+    {
+        using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var reader = new StreamReader(stream, encoding ?? Encoding.UTF8))
+            return reader.ReadToEnd();
     }
 
     public override string ToString()
@@ -147,12 +168,6 @@ public partial class MergeConflict : ObservableObject, IDisposable
 
     private bool CanShowInExplorer()
         => !string.IsNullOrEmpty(FullPath) && Directory.Exists(System.IO.Path.GetDirectoryName(FullPath));
-
-    [RelayCommand]
-    private void Redo()
-    {
-        NumberOfConflicts++; // Simulate reintroducing the conflict
-    }
 
     [RelayCommand]
     private void DoNotIncludeFile()

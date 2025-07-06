@@ -48,7 +48,7 @@ public partial class MergeConflictViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanContinue))]
     private void Continue()
     {
-        DialogHost.CloseDialogCommand.Execute(this, null);
+        DialogHost.CloseDialogCommand.Execute(true, null);
     }
 
     public void Dispose()

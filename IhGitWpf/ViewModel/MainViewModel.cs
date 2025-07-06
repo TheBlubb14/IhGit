@@ -819,7 +819,7 @@ public sealed partial class MainViewModel : ObservableRecipient
                 // conflict.Ours is the destination branch
                 // conflict.Theirs is the branch is is currently being upmerged
                 // If Ours is null, the file doesnt exist anymore on remote
-                var ancestorPath = conflict?.Ancestor?.Path ?? "";
+                var ancestorPath = conflict?.Ours?.Path ?? "";
                 var name = Path.GetFileName(ancestorPath);
                 var path = Path.GetDirectoryName(ancestorPath);
                 var existing = vm.Items.FirstOrDefault(x => x.Name == name);
@@ -832,7 +832,6 @@ public sealed partial class MainViewModel : ObservableRecipient
                 {
                     vm.Items.Add(new()
                     {
-                        Conflict = conflict,
                         Name = name,
                         Path = path,
                         RepoPath = RepoPath,
@@ -849,6 +848,30 @@ public sealed partial class MainViewModel : ObservableRecipient
                 DataContext = vm
             };
             var res = await DialogHost.Show(mergeConflict);
+
+            if (res is true)
+            {
+                foreach (var item in vm.Items.Where(x => x.DeletedOnRemoteAction != MergeConflictAction.None))
+                {
+                    Log($"Resolving conflict for {item.Name} with action {item.DeletedOnRemoteAction}");
+                    // TODO: test this
+                    if(item.DeletedOnRemoteAction == MergeConflictAction.UseModifiedFile)
+                    {
+                        // Use modified file
+                        //await Git(new("git add failed", $"git add {item.FullPath} failed"), "add", item.FullPath);
+                    }
+                    else if (item.DeletedOnRemoteAction == MergeConflictAction.DoNotIncludeFile)
+                    {
+                        // Use deleted file
+                        //await Git(new("git rm failed", $"git rm {item.FullPath} failed"), "rm", item.FullPath);
+
+                        //if (File.Exists(item.FullPath))
+                        //{
+                        //    File.Delete(item.FullPath);
+                        //}
+                    }
+                }
+            }
 
             var mbox = MessageBox.Show(
                 "Waiting for merge conflicts to be solved..\r\n" +
