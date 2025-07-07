@@ -65,14 +65,16 @@
                                         <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
                                     <StackPanel Orientation="Horizontal"
-                                                Grid.Row="0">
+                                                Grid.Row="0"
+                                                Margin="0 0 8 0">
                                         <TextBlock Text="{Binding Path}" />
+                                        <TextBlock Text="/" />
                                         <TextBlock Text="{Binding Name}"
                                                    FontWeight="Bold" />
                                     </StackPanel>
                                     <TextBlock Text="{Binding Description}"
-                                               Grid.Row="1" 
-                                               Foreground="{Binding DescriptionColor}"/>
+                                               Grid.Row="1"
+                                               Foreground="{Binding DescriptionColor}" />
                                 </Grid>
 
                                 <StackPanel Grid.Column="1"
@@ -86,15 +88,16 @@
                                             <StackPanel Margin="8">
                                                 <Button Content="Open with default program"
                                                         Style="{StaticResource MaterialDesignFlatButton}"
-                                                        Command="{Binding OpenWithDefaultProgramCommand}"/>
+                                                        Command="{Binding OpenWithDefaultProgramCommand}" />
                                                 <Button Content="Show in explorer"
                                                         Style="{StaticResource MaterialDesignFlatButton}"
-                                                        Command="{Binding ShowInExplorerCommand}"/>
+                                                        Command="{Binding ShowInExplorerCommand}" />
                                             </StackPanel>
                                         </materialDesign:SplitButton.PopupContent>
                                     </materialDesign:SplitButton>
                                     <materialDesign:SplitButton VerticalAlignment="Bottom"
-                                                                Content="Resolve"
+                                                                Content="Open"
+                                                                Command="{Binding OpenCommand}"
                                                                 Visibility="{Binding ResolveButtonVisible, Converter={x:Static materialDesignConverters:BooleanToVisibilityConverter.CollapsedInstance}}">
                                         <materialDesign:SplitButton.PopupContent>
                                             <StackPanel Margin="8">
@@ -125,16 +128,23 @@
             </ScrollViewer>
 
             <TextBlock Grid.Row="2"
-                       Text="Some text to say you have conflicts" />
+                       Text="{Binding MessageOfTheDay}" />
         </Grid>
 
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Grid.Row="2">
-            <Button Content="Continiue"
+            <Button ToolTip="Reload the merge conflict window"
+                    Style="{DynamicResource MaterialDesignIconButton}"
+                    Command="{Binding RefreshCommand}">
+                <materialDesign:PackIcon Kind="Refresh" />
+            </Button>
+            <Button Content="Continue"
+                    ToolTip="cherry-pick --continue"
                     Style="{DynamicResource MaterialDesignFlatButton}"
                     Command="{Binding ContinueCommand}" />
             <Button Content="Abort"
+                    ToolTip="Abort"
                     Style="{DynamicResource MaterialDesignFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                     CommandParameter="{StaticResource False}" />

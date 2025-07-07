@@ -13,11 +13,13 @@ namespace IhGitWpf.ViewModel;
 
 public partial class MergeConflict : ObservableObject, IDisposable
 {
-    [ObservableProperty]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(GitPath))]
     private string? _name;
 
-    [ObservableProperty]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(GitPath))]
     private string? _path;
+
+    public string? GitPath => $"{Path?.TrimEnd('/')}/{Name}";
 
     [ObservableProperty]
     private string? _repoPath;
@@ -32,6 +34,7 @@ public partial class MergeConflict : ObservableObject, IDisposable
 
         if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(value))
         {
+            NumberOfConflicts = CountConflicts(value);
             _fileWatcher.Path = System.IO.Path.GetDirectoryName(value) ?? "";
             _fileWatcher.Filter = System.IO.Path.GetFileName(value);
             _fileWatcher.EnableRaisingEvents = true;
@@ -103,17 +106,24 @@ public partial class MergeConflict : ObservableObject, IDisposable
         _fileWatcher = new();
         _fileWatcher.Changed += (sender, args) =>
         {
-            var content = ReadAllText(args.FullPath);
-            var conflictCounters = content
-            .Split([Environment.NewLine], StringSplitOptions.None)
-            .Count(line => 
-            line.StartsWith("<<<<<<<") || 
-            line.StartsWith(">>>>>>>") || 
-            line.StartsWith("====="));
- 
-            dispatcher.Invoke(() =>
-            NumberOfConflicts = (int)Math.Ceiling(conflictCounters / 3d));
+            dispatcher.Invoke(() => NumberOfConflicts = CountConflicts(args.FullPath));
         };
+    }
+
+    private static int CountConflicts(string fullPath)
+    {
+        if (!File.Exists(fullPath))
+            return 0;
+
+        var content = ReadAllText(fullPath);
+        var markerCount = content
+            .Split([Environment.NewLine], StringSplitOptions.None)
+            .Count(line =>
+                line.StartsWith("<<<<<<<") ||
+                line.StartsWith(">>>>>>>") ||
+                line.StartsWith("====="));
+
+        return (int)Math.Ceiling(markerCount / 3d);
     }
 
     private static string ReadAllText(string file, Encoding? encoding = null)
@@ -129,8 +139,6 @@ public partial class MergeConflict : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanOpenWithDefaultProgram))]
     private void Open()
     {
-        NumberOfConflicts = 0; // Simulate resolving the conflict
-
         Process.Start(new ProcessStartInfo(Environment.ExpandEnvironmentVariables(Settings.Default.ExternalEditorPath))
         {
             Arguments = $"\"{FullPath}\"",
@@ -154,14 +162,15 @@ public partial class MergeConflict : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanShowInExplorer))]
     private void ShowInExplorer()
     {
-        var directory = System.IO.Path.GetDirectoryName(FullPath);
+        var path = FullPath;
+        var directory = System.IO.Path.GetDirectoryName(path);
         if (directory is null)
             return;
 
         Process.Start(new ProcessStartInfo(directory)
         {
             FileName = "explorer.exe",
-            Arguments = $"/select,\"{FullPath}\"",
+            Arguments = $"/select,\"{path.Replace('/', '\\')}\"",
             UseShellExecute = true
         });
     }

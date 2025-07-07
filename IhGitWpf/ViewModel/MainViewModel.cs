@@ -819,28 +819,21 @@ public sealed partial class MainViewModel : ObservableRecipient
                 // conflict.Ours is the destination branch
                 // conflict.Theirs is the branch is is currently being upmerged
                 // If Ours is null, the file doesnt exist anymore on remote
-                var ancestorPath = conflict?.Ours?.Path ?? "";
-                var name = Path.GetFileName(ancestorPath);
-                var path = Path.GetDirectoryName(ancestorPath);
-                var existing = vm.Items.FirstOrDefault(x => x.Name == name);
-                var fullPath = Path.Combine(RepoPath, ancestorPath);
-                if (existing is not null)
+                var entry = conflict.Ours ?? conflict.Theirs ?? conflict.Ancestor;
+                var entryPath = entry?.Path ?? "";
+                var name = Path.GetFileName(entryPath);
+                var path = Path.GetDirectoryName(entryPath)?.Replace('\\', '/')?.TrimEnd('/');
+                var fullPath = Path.Combine(RepoPath, entryPath).Replace('\\', '/');
+
+                vm.Items.Add(new()
                 {
-                    existing.NumberOfConflicts++;
-                }
-                else
-                {
-                    vm.Items.Add(new()
-                    {
-                        Name = name,
-                        Path = path,
-                        RepoPath = RepoPath,
-                        NumberOfConflicts = 1,
-                        FullPath = fullPath,
-                        RemoteName = repo.Head.FriendlyName,
-                        DeletedOnRemote = conflict?.Ours is null,
-                    });
-                }
+                    Name = name,
+                    Path = path,
+                    RepoPath = RepoPath,
+                    FullPath = fullPath,
+                    RemoteName = repo.Head.FriendlyName,
+                    DeletedOnRemote = conflict?.Ours is null,
+                });
             }
 
             var mergeConflict = new Dialogs.MergeConflict()
@@ -853,49 +846,31 @@ public sealed partial class MainViewModel : ObservableRecipient
             {
                 foreach (var item in vm.Items.Where(x => x.DeletedOnRemoteAction != MergeConflictAction.None))
                 {
-                    Log($"Resolving conflict for {item.Name} with action {item.DeletedOnRemoteAction}");
-                    // TODO: test this
-                    if(item.DeletedOnRemoteAction == MergeConflictAction.UseModifiedFile)
+                    var path = item.GitPath;
+                    if (string.IsNullOrWhiteSpace(path))
+                        continue;
+
+                    Log($"Resolving conflict for {path} with action {item.DeletedOnRemoteAction}");
+
+                    if (item.DeletedOnRemoteAction == MergeConflictAction.UseModifiedFile)
                     {
                         // Use modified file
-                        //await Git(new("git add failed", $"git add {item.FullPath} failed"), "add", item.FullPath);
+                        await Git(new("git add failed", $"git add {path} failed"), "add", path);
                     }
                     else if (item.DeletedOnRemoteAction == MergeConflictAction.DoNotIncludeFile)
                     {
                         // Use deleted file
-                        //await Git(new("git rm failed", $"git rm {item.FullPath} failed"), "rm", item.FullPath);
-
-                        //if (File.Exists(item.FullPath))
-                        //{
-                        //    File.Delete(item.FullPath);
-                        //}
+                        await Git(new("git rm failed", $"git rm {path} failed"), "rm", path);
                     }
                 }
+
+                // cherry pick continue
+                await Git(new("add . failed", ShowDialog: false), "add", ".");
+                await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
             }
-
-            var mbox = MessageBox.Show(
-                "Waiting for merge conflicts to be solved..\r\n" +
-                "Yes: try-again\r\n" +
-                "No: cherry-pick --continue\r\n" +
-                "Cancel: Abort" + files,
-                "cherry pick failed",
-                MessageBoxButton.YesNoCancel);
-
-            switch (mbox)
+            else if (res is false)
             {
-                case MessageBoxResult.Yes:
-                    // try again
-                    break;
-
-                case MessageBoxResult.No:
-                    // cherry pick continue
-                    await Git(new("add . failed", ShowDialog: false), "add", ".");
-                    await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
-                    break;
-
-                case MessageBoxResult.Cancel:
-                default:
-                    return false;
+                await Git(new("cherry pick abort failed"), "cherry-pick", "--abort");
             }
         } while (HasConflicts());
 

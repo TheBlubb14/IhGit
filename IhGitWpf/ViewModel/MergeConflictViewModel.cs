@@ -34,6 +34,10 @@ public partial class MergeConflictViewModel : ObservableObject, IDisposable
         }
     }
 
+    private static readonly string[] motd = ["I think you have conflicts", "We have some conflicts", "Resolve your conflicts"];
+    public string MessageOfTheDay => motd[DateTime.Now.Day % motd.Length];
+
+
     public MergeConflictViewModel()
     {
         OnItemsChanging(null, _items);
@@ -49,6 +53,12 @@ public partial class MergeConflictViewModel : ObservableObject, IDisposable
     private void Continue()
     {
         DialogHost.CloseDialogCommand.Execute(true, null);
+    }
+
+    [RelayCommand]
+    private void Refresh()
+    {
+        DialogHost.CloseDialogCommand.Execute(null, null);
     }
 
     public void Dispose()
