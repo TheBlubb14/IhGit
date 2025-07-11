@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:s="clr-namespace:System;assembly=netstandard"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:materialDesignConverters="clr-namespace:MaterialDesignThemes.Wpf.Converters;assembly=MaterialDesignThemes.Wpf"
         xmlns:behavior="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:vm="clr-namespace:IhGitWpf.ViewModel"
         xmlns:controls="clr-namespace:IhGitWpf.Controls"
@@ -24,387 +25,389 @@
 
     <TabControl>
         <TabItem Header="Merging">
-            <Grid Margin="16"
-                  ShowGridLines="False">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1*" />
-                    <ColumnDefinition Width="16" />
-                    <ColumnDefinition Width="1*" />
-                </Grid.ColumnDefinitions>
-
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Grid Grid.Column="0"
-                      Grid.Row="0">
+            <materialDesign:DialogHost>
+                <Grid Margin="16"
+                      ShowGridLines="False">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition />
+                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="1*" />
                     </Grid.ColumnDefinitions>
+
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBox Grid.Row="0"
-                             Grid.Column="0"
-                             VerticalAlignment="Center"
-                             materialDesign:HintAssist.Hint="PR Number"
-                             materialDesign:TextFieldAssist.HasClearButton="True"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             Text="{Binding PrNumber, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}">
-                        <TextBox.InputBindings>
-                            <KeyBinding Command="{Binding LoadPrCommand}"
-                                        Key="Enter" />
-                        </TextBox.InputBindings>
-                    </TextBox>
+                    <Grid Grid.Column="0"
+                          Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0"
-                               Grid.Column="1"
-                               Margin="16 0"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Center"
-                               Style="{StaticResource MaterialDesignLabelLargeTextBlock}"
-                               Text="{Binding CurrentVersion}" />
-
-                    <StackPanel Grid.Row="1"
-                                Grid.Column="0"
-                                Grid.ColumnSpan="2">
-                        <StackPanel Margin="0 8"
-                                    Orientation="Horizontal">
-                            <Button Command="{Binding StatusCommand}"
-                                    Content="Status"
-                                    ToolTip="Status of repo path"
-                                    Margin="0 0 8 0" />
-                            <Button Command="{Binding LoadPrCommand}"
-                                    Content="Load"
-                                    ToolTip="Load PR"
-                                    Margin="8 0" />
-                            <Button Command="{Binding OpenZohoCommand}"
-                                    ToolTip="Open Zoho"
-                                    Visibility="{Binding ShowZohoButton, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                    Margin="8 0">
-                                <Button.Content>
-                                    <Viewbox Stretch="Uniform">
-                                        <Canvas UseLayoutRounding="False"
-                                                Width="273.64978"
-                                                Height="289.98764">
-                                            <Canvas.Clip>
-                                                <RectangleGeometry Rect="0.0,0.0,273.64978,289.98764" />
-                                            </Canvas.Clip>
-                                            <Path Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
-                                                <Path.Data>
-                                                    <PathGeometry Figures="m 242.389 0 c -2.1625 -0.0125 -4.33633 0.786722 -5.98633 2.38672 L 106.141 128.887 H 62.8008 c -4.69999 0 -8.5 3.80001 -8.5 8.5 c 0 4.69999 3.80001 8.5 8.5 8.5 h 25.834 l -26.2578 25.5 h -43.375 c -4.69999 0 -8.5 3.80001 -8.5 8.5 c 0 4.69999 3.80001 8.5 8.5 8.5 h 25.8691 l -30.0703 29.2012 c -9.39998 9.19998 -14.6988 21.4992 -14.7988 34.6992 c -0.0999998 13.2 4.99885 25.7 14.2988 35 l 0.101563 0.0996 c 3.19999 3.2 8.19962 3.40038 11.5996 0.40039 L 146.402 181.988 c 3.6 -3.1 3.89883 -8.50001 0.79883 -12 c -3.1 -3.6 -8.5 -3.90078 -12 -0.80078 l -113.699 100 c -2.99999 -5 -4.5 -10.6996 -4.5 -16.5996 c 0.1 -8.69998 3.49923 -16.7012 9.69922 -22.7012 L 242.201 20.6875 l 5.09961 5.09961 c 6.29998 6.29999 9.60078 14.6996 9.30078 23.5996 c -0.3 8.89998 -4.2004 17.0004 -10.9004 22.9004 l -84.6992 74.3008 c -3.09999 2.69999 -3.7996 7.29884 -1.59961 10.7988 l 38.7988 63.3008 l -33.5996 10.8008 c -10.5 3.39999 -19.5992 10.3 -25.6992 19.5 c -5.99998 9.19998 -8.90039 20.2989 -7.90039 31.2988 c 0.2 2.29999 1.39922 4.40039 3.19922 5.90039 c 1.5 1.19999 3.40079 1.80078 5.30078 1.80078 c 0.4 0 0.8 -0.002 1 -0.10156 l 83.7988 -12 c 15.3 -2.09999 28.4004 -11.1992 35.9004 -24.6992 c 7.49998 -13.5 8.20038 -29.4 1.90039 -43.5 l -29.6992 -66.9004 c -1.89999 -4.3 -6.90118 -6.19883 -11.2012 -4.29883 c -4.29999 1.9 -6.19882 6.89922 -4.29883 11.1992 l 29.6992 66.9004 c 4.1 9.19998 3.70078 19.6004 -1.19922 28.4004 c -4.89998 8.79998 -13.4004 14.6996 -23.4004 16.0996 l -73.7012 10.5 c 0.8 -4 2.40118 -7.90079 4.70117 -11.3008 c 4 -5.99999 9.89884 -10.4992 16.7988 -12.6992 l 43.9004 -14.2012 c 2.5 -0.79999 4.50039 -2.69962 5.40039 -5.09961 c 0.9 -2.4 0.70078 -5.20039 -0.69922 -7.40039 l -40.7012 -66.3984 l 79.3008 -69.6016 c 5.09999 -4.49999 9.19962 -9.99923 12.0996 -16.1992 c 2.8 -5.99999 4.3 -12.4 4.5 -19 c 0.3 -6.59999 -0.79922 -13.0992 -3.19922 -19.1992 c -2.49999 -6.39999 -6.20157 -12.1 -11.1016 -17 l -11 -11 C 246.701 0.838285 244.551 0.0125 242.389 0 Z"
-                                                                  FillRule="Nonzero" />
-                                                </Path.Data>
-                                            </Path>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Button.Content>
-                            </Button>
-                            <Button Command="{Binding OpenGithubCommand}"
-                                    Margin="8 0"
-                                    ToolTip="Open Github"
-                                    Content="{materialDesign:PackIcon Github}" />
-                            <Button Command="{Binding ClearUiCommand}"
-                                    Content="{materialDesign:PackIcon Delete}"
-                                    ToolTip="Clear inputs"
-                                    Margin="8 0">
-                                <Button.CommandParameter>
-                                    <s:Boolean>True</s:Boolean>
-                                </Button.CommandParameter>
-                            </Button>
-
-                        </StackPanel>
-
-                        <TextBox VerticalAlignment="Center"
-                                 materialDesign:HintAssist.Hint="Title"
-                                 ToolTip="The title of your PR"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 Text="{Binding Title}" />
-
-                        <TextBox Height="100"
-                                 VerticalAlignment="Top"
-                                 materialDesign:HintAssist.Hint="Description"
-                                 ToolTip="The body of your PR"
-                                 AcceptsReturn="True"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 Text="{Binding Body}"
-                                 Margin="0 8" />
-
-                        <TextBox VerticalAlignment="Center"
-                                 materialDesign:HintAssist.Hint="Feature Name"
-                                 ToolTip="The name of your feature. Used to create a branch"
+                        <TextBox Grid.Row="0"
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"
+                                 materialDesign:HintAssist.Hint="PR Number"
                                  materialDesign:TextFieldAssist.HasClearButton="True"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 Text="{Binding FeatureName, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
-                    </StackPanel>
+                                 Text="{Binding PrNumber, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}">
+                            <TextBox.InputBindings>
+                                <KeyBinding Command="{Binding LoadPrCommand}"
+                                            Key="Enter" />
+                            </TextBox.InputBindings>
+                        </TextBox>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  Grid.Column="0"
-                                  Grid.ColumnSpan="2"
-                                  Grid.Row="2"
-                                  Margin="0,12,0,0">
-                        <ItemsControl Grid.IsSharedSizeScope="True"
-                                      ItemsSource="{Binding Commits}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:Commit}">
-                                    <Border x:Name="Border"
-                                            Padding="8">
-                                        <Grid x:Name="a">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition SharedSizeGroup="Checkerz" />
-                                                <ColumnDefinition />
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox VerticalAlignment="Center"
-                                                      IsChecked="{Binding IsSelected}"
-                                                      ToolTip="{Binding Value.Commit.Message}"
-                                                      Grid.IsSharedSizeScope="True">
-                                                <Grid Margin="8,0,0,0">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"
-                                                                          SharedSizeGroup="A" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition />
-                                                        <RowDefinition />
-                                                    </Grid.RowDefinitions>
-                                                    <TextBlock Grid.Row="0"
-                                                               FontWeight="Bold"
-                                                               Text="{Binding Value.Sha}" />
-                                                    <TextBlock Grid.Row="1"
-                                                               Text="{Binding Title}"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               ToolTip="{Binding Value.Commit.Message}" />
-                                                </Grid>
-                                            </CheckBox>
-                                        </Grid>
-                                    </Border>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding IsSelected}"
-                                                     Value="True">
-                                            <Setter TargetName="Border"
-                                                    Property="Background"
-                                                    Value="{DynamicResource MaterialDesignSelection}" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="1"
+                                   Margin="16 0"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   Style="{StaticResource MaterialDesignLabelLargeTextBlock}"
+                                   Text="{Binding CurrentVersion}" />
 
-                <Grid Grid.Column="2"
-                      Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="1"
+                                    Grid.Column="0"
+                                    Grid.ColumnSpan="2">
+                            <StackPanel Margin="0 8"
+                                        Orientation="Horizontal">
+                                <Button Command="{Binding StatusCommand}"
+                                        Content="Status"
+                                        ToolTip="Status of repo path"
+                                        Margin="0 0 8 0" />
+                                <Button Command="{Binding LoadPrCommand}"
+                                        Content="Load"
+                                        ToolTip="Load PR"
+                                        Margin="8 0" />
+                                <Button Command="{Binding OpenZohoCommand}"
+                                        ToolTip="Open Zoho"
+                                        Visibility="{Binding ShowZohoButton, Converter={x:Static materialDesignConverters:BooleanToVisibilityConverter.CollapsedInstance}}"
+                                        Margin="8 0">
+                                    <Button.Content>
+                                        <Viewbox Stretch="Uniform">
+                                            <Canvas UseLayoutRounding="False"
+                                                    Width="273.64978"
+                                                    Height="289.98764">
+                                                <Canvas.Clip>
+                                                    <RectangleGeometry Rect="0.0,0.0,273.64978,289.98764" />
+                                                </Canvas.Clip>
+                                                <Path Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                                                    <Path.Data>
+                                                        <PathGeometry Figures="m 242.389 0 c -2.1625 -0.0125 -4.33633 0.786722 -5.98633 2.38672 L 106.141 128.887 H 62.8008 c -4.69999 0 -8.5 3.80001 -8.5 8.5 c 0 4.69999 3.80001 8.5 8.5 8.5 h 25.834 l -26.2578 25.5 h -43.375 c -4.69999 0 -8.5 3.80001 -8.5 8.5 c 0 4.69999 3.80001 8.5 8.5 8.5 h 25.8691 l -30.0703 29.2012 c -9.39998 9.19998 -14.6988 21.4992 -14.7988 34.6992 c -0.0999998 13.2 4.99885 25.7 14.2988 35 l 0.101563 0.0996 c 3.19999 3.2 8.19962 3.40038 11.5996 0.40039 L 146.402 181.988 c 3.6 -3.1 3.89883 -8.50001 0.79883 -12 c -3.1 -3.6 -8.5 -3.90078 -12 -0.80078 l -113.699 100 c -2.99999 -5 -4.5 -10.6996 -4.5 -16.5996 c 0.1 -8.69998 3.49923 -16.7012 9.69922 -22.7012 L 242.201 20.6875 l 5.09961 5.09961 c 6.29998 6.29999 9.60078 14.6996 9.30078 23.5996 c -0.3 8.89998 -4.2004 17.0004 -10.9004 22.9004 l -84.6992 74.3008 c -3.09999 2.69999 -3.7996 7.29884 -1.59961 10.7988 l 38.7988 63.3008 l -33.5996 10.8008 c -10.5 3.39999 -19.5992 10.3 -25.6992 19.5 c -5.99998 9.19998 -8.90039 20.2989 -7.90039 31.2988 c 0.2 2.29999 1.39922 4.40039 3.19922 5.90039 c 1.5 1.19999 3.40079 1.80078 5.30078 1.80078 c 0.4 0 0.8 -0.002 1 -0.10156 l 83.7988 -12 c 15.3 -2.09999 28.4004 -11.1992 35.9004 -24.6992 c 7.49998 -13.5 8.20038 -29.4 1.90039 -43.5 l -29.6992 -66.9004 c -1.89999 -4.3 -6.90118 -6.19883 -11.2012 -4.29883 c -4.29999 1.9 -6.19882 6.89922 -4.29883 11.1992 l 29.6992 66.9004 c 4.1 9.19998 3.70078 19.6004 -1.19922 28.4004 c -4.89998 8.79998 -13.4004 14.6996 -23.4004 16.0996 l -73.7012 10.5 c 0.8 -4 2.40118 -7.90079 4.70117 -11.3008 c 4 -5.99999 9.89884 -10.4992 16.7988 -12.6992 l 43.9004 -14.2012 c 2.5 -0.79999 4.50039 -2.69962 5.40039 -5.09961 c 0.9 -2.4 0.70078 -5.20039 -0.69922 -7.40039 l -40.7012 -66.3984 l 79.3008 -69.6016 c 5.09999 -4.49999 9.19962 -9.99923 12.0996 -16.1992 c 2.8 -5.99999 4.3 -12.4 4.5 -19 c 0.3 -6.59999 -0.79922 -13.0992 -3.19922 -19.1992 c -2.49999 -6.39999 -6.20157 -12.1 -11.1016 -17 l -11 -11 C 246.701 0.838285 244.551 0.0125 242.389 0 Z"
+                                                                      FillRule="Nonzero" />
+                                                    </Path.Data>
+                                                </Path>
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Button.Content>
+                                </Button>
+                                <Button Command="{Binding OpenGithubCommand}"
+                                        Margin="8 0"
+                                        ToolTip="Open Github"
+                                        Content="{materialDesign:PackIcon Github}" />
+                                <Button Command="{Binding ClearUiCommand}"
+                                        Content="{materialDesign:PackIcon Delete}"
+                                        ToolTip="Clear inputs"
+                                        Margin="8 0">
+                                    <Button.CommandParameter>
+                                        <s:Boolean>True</s:Boolean>
+                                    </Button.CommandParameter>
+                                </Button>
 
-                    <Border Grid.Row="0"
-                            Grid.Column="0"
-                            Margin="0 0 4 0"
-                            BorderThickness="2"
-                            BorderBrush="{DynamicResource MaterialDesignLightSeparatorBackground}"
-                            Visibility="{Binding Reviewers.Count, Converter={StaticResource NotZeroToVisibilityConverter}}">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
+                            </StackPanel>
+
                             <TextBox VerticalAlignment="Center"
-                                     Margin="12 8"
-                                     Grid.Row="0"
-                                     materialDesign:HintAssist.Hint="Filter Reviewer"
-                                     Style="{StaticResource MaterialDesignTextBox}"
-                                     materialDesign:TextFieldAssist.HasClearButton="True"
-                                     Text="{Binding ReviewerFilter, UpdateSourceTrigger=PropertyChanged}" />
-                            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                          Margin="12 0"
-                                          Grid.Row="1"
-                                          MinHeight="120">
-                                <ItemsControl Grid.IsSharedSizeScope="True"
-                                              ItemsSource="{Binding Reviewers}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type vm:Reviewer}">
-                                            <Border x:Name="Border"
-                                                    Padding="8">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition SharedSizeGroup="Checkerz" />
-                                                        <ColumnDefinition />
-                                                    </Grid.ColumnDefinitions>
-                                                    <CheckBox VerticalAlignment="Center"
-                                                              IsChecked="{Binding IsSelected}"
-                                                              Grid.IsSharedSizeScope="True">
-                                                        <Grid Grid.Column="1"
-                                                              Margin="8,0,0,0">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"
-                                                                                  SharedSizeGroup="A" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <Grid.RowDefinitions>
-                                                                <RowDefinition />
-                                                            </Grid.RowDefinitions>
-                                                            <TextBlock FontWeight="Bold"
-                                                                       Text="{Binding .}" />
-                                                        </Grid>
-                                                    </CheckBox>
-                                                </Grid>
-                                            </Border>
-                                            <DataTemplate.Triggers>
-                                                <DataTrigger Binding="{Binding IsSelected}"
-                                                             Value="True">
-                                                    <Setter TargetName="Border"
-                                                            Property="Background"
-                                                            Value="{DynamicResource MaterialDesignSelection}" />
-                                                </DataTrigger>
-                                            </DataTemplate.Triggers>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Grid>
-                    </Border>
+                                     materialDesign:HintAssist.Hint="Title"
+                                     ToolTip="The title of your PR"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding Title}" />
 
-                    <Border Grid.Row="0"
-                            Grid.Column="1"
-                            BorderThickness="2"
-                            Margin="4 0 0 0"
-                            BorderBrush="{DynamicResource MaterialDesignLightSeparatorBackground}"
-                            Visibility="{Binding Labels.Count, Converter={StaticResource NotZeroToVisibilityConverter}}">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
+                            <TextBox Height="100"
+                                     VerticalAlignment="Top"
+                                     materialDesign:HintAssist.Hint="Description"
+                                     ToolTip="The body of your PR"
+                                     AcceptsReturn="True"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding Body}"
+                                     Margin="0 8" />
+
                             <TextBox VerticalAlignment="Center"
-                                     Margin="12 8"
-                                     Grid.Row="0"
-                                     materialDesign:HintAssist.Hint="Filter Label"
-                                     Style="{StaticResource MaterialDesignTextBox}"
+                                     materialDesign:HintAssist.Hint="Feature Name"
+                                     ToolTip="The name of your feature. Used to create a branch"
                                      materialDesign:TextFieldAssist.HasClearButton="True"
-                                     Text="{Binding LabelFilter, UpdateSourceTrigger=PropertyChanged}" />
-                            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                          Margin="12 0"
-                                          Grid.Row="1"
-                                          MinHeight="120">
-                                <ItemsControl Grid.IsSharedSizeScope="True"
-                                              ItemsSource="{Binding Labels}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type vm:Label}">
-                                            <Border x:Name="Border"
-                                                    Padding="8">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition SharedSizeGroup="Checkerz" />
-                                                        <ColumnDefinition />
-                                                    </Grid.ColumnDefinitions>
-                                                    <CheckBox VerticalAlignment="Center"
-                                                              IsChecked="{Binding IsSelected}"
-                                                              Grid.IsSharedSizeScope="True">
-                                                        <Grid Grid.Column="1"
-                                                              Margin="8,0,0,0">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"
-                                                                                  SharedSizeGroup="A" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <Grid.RowDefinitions>
-                                                                <RowDefinition />
-                                                            </Grid.RowDefinitions>
-                                                            <TextBlock FontWeight="Bold"
-                                                                       Text="{Binding .}" />
-                                                        </Grid>
-                                                    </CheckBox>
-                                                </Grid>
-                                            </Border>
-                                            <DataTemplate.Triggers>
-                                                <DataTrigger Binding="{Binding IsSelected}"
-                                                             Value="True">
-                                                    <Setter TargetName="Border"
-                                                            Property="Background"
-                                                            Value="{DynamicResource MaterialDesignSelection}" />
-                                                </DataTrigger>
-                                            </DataTemplate.Triggers>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Grid>
-                    </Border>
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding FeatureName, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
+                        </StackPanel>
 
-                    <Button Grid.Column="0"
-                            Grid.Row="1"
-                            Command="{Binding UpMergeCommand}"
-                            Margin="0 16 4 8"
-                            Content="{materialDesign:PackIcon ArrowUp}"
-                            ToolTip="Perform upmerge" />
-                    <controls:BranchSelect Grid.Column="0"
-                                           Grid.Row="2"
-                                           Versions="{Binding Path=UpMergeVersions}" />
-
-                    <Button Grid.Column="1"
-                            Grid.Row="1"
-                            Command="{Binding DownMergeCommand}"
-                            Margin="4 16 0 8"
-                            Content="{materialDesign:PackIcon ArrowDown}"
-                            ToolTip="Perform downmerge" />
-                    <controls:BranchSelect Grid.Column="1"
-                                           Grid.Row="2"
-                                           Versions="{Binding DownMergeVersions}" />
-                </Grid>
-
-                <Expander Grid.Column="0"
-                          Grid.Row="2"
-                          Grid.ColumnSpan="3"
-                          Margin="0,16,0,0"
-                          Header="Logs">
-                    <Border BorderThickness="2"
-                            BorderBrush="{DynamicResource MaterialDesignLightSeparatorBackground}">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <ListView Grid.Row="0"
-                                      ItemsSource="{Binding Logs}"
-                                      Height="220">
-                                <behavior:Interaction.Behaviors>
-                                    <local:ScrollToBehavior ScrollMode="Bottom"
-                                                            Enabled="True" />
-                                </behavior:Interaction.Behaviors>
-                                <ListView.ItemContainerStyle>
-                                    <Style TargetType="ListViewItem"
-                                           BasedOn="{StaticResource MaterialDesignListBoxItem}">
-                                        <Setter Property="Padding"
-                                                Value="2" />
-                                    </Style>
-                                </ListView.ItemContainerStyle>
-                                <ListView.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" />
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      Grid.Column="0"
+                                      Grid.ColumnSpan="2"
+                                      Grid.Row="2"
+                                      Margin="0,12,0,0">
+                            <ItemsControl Grid.IsSharedSizeScope="True"
+                                          ItemsSource="{Binding Commits}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:Commit}">
+                                        <Border x:Name="Border"
+                                                Padding="8">
+                                            <Grid x:Name="a">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition SharedSizeGroup="Checkerz" />
+                                                    <ColumnDefinition />
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox VerticalAlignment="Center"
+                                                          IsChecked="{Binding IsSelected}"
+                                                          ToolTip="{Binding Value.Commit.Message}"
+                                                          Grid.IsSharedSizeScope="True">
+                                                    <Grid Margin="8,0,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"
+                                                                              SharedSizeGroup="A" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition />
+                                                            <RowDefinition />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0"
+                                                                   FontWeight="Bold"
+                                                                   Text="{Binding Value.Sha}" />
+                                                        <TextBlock Grid.Row="1"
+                                                                   Text="{Binding Title}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding Value.Commit.Message}" />
+                                                    </Grid>
+                                                </CheckBox>
+                                            </Grid>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected}"
+                                                         Value="True">
+                                                <Setter TargetName="Border"
+                                                        Property="Background"
+                                                        Value="{DynamicResource MaterialDesignSelection}" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
                                     </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
 
-                            <Button Grid.Row="1"
-                                    Command="{Binding ClearLogsCommand}"
-                                    Content="Clear Logs" />
-                        </Grid>
-                    </Border>
-                </Expander>
-            </Grid>
+                    <Grid Grid.Column="2"
+                          Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                Grid.Column="0"
+                                Margin="0 0 4 0"
+                                BorderThickness="2"
+                                BorderBrush="{DynamicResource MaterialDesignLightSeparatorBackground}"
+                                Visibility="{Binding Reviewers.Count, Converter={x:Static materialDesignConverters:NotZeroToVisibilityConverter.Instance}}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBox VerticalAlignment="Center"
+                                         Margin="12 8"
+                                         Grid.Row="0"
+                                         materialDesign:HintAssist.Hint="Filter Reviewer"
+                                         Style="{StaticResource MaterialDesignTextBox}"
+                                         materialDesign:TextFieldAssist.HasClearButton="True"
+                                         Text="{Binding ReviewerFilter, UpdateSourceTrigger=PropertyChanged}" />
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              Margin="12 0"
+                                              Grid.Row="1"
+                                              MinHeight="120">
+                                    <ItemsControl Grid.IsSharedSizeScope="True"
+                                                  ItemsSource="{Binding Reviewers}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:Reviewer}">
+                                                <Border x:Name="Border"
+                                                        Padding="8">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition SharedSizeGroup="Checkerz" />
+                                                            <ColumnDefinition />
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox VerticalAlignment="Center"
+                                                                  IsChecked="{Binding IsSelected}"
+                                                                  Grid.IsSharedSizeScope="True">
+                                                            <Grid Grid.Column="1"
+                                                                  Margin="8,0,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"
+                                                                                      SharedSizeGroup="A" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition />
+                                                                </Grid.RowDefinitions>
+                                                                <TextBlock FontWeight="Bold"
+                                                                           Text="{Binding .}" />
+                                                            </Grid>
+                                                        </CheckBox>
+                                                    </Grid>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}"
+                                                                 Value="True">
+                                                        <Setter TargetName="Border"
+                                                                Property="Background"
+                                                                Value="{DynamicResource MaterialDesignSelection}" />
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="0"
+                                Grid.Column="1"
+                                BorderThickness="2"
+                                Margin="4 0 0 0"
+                                BorderBrush="{DynamicResource MaterialDesignLightSeparatorBackground}"
+                                Visibility="{Binding Labels.Count, Converter={x:Static materialDesignConverters:NotZeroToVisibilityConverter.Instance}}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBox VerticalAlignment="Center"
+                                         Margin="12 8"
+                                         Grid.Row="0"
+                                         materialDesign:HintAssist.Hint="Filter Label"
+                                         Style="{StaticResource MaterialDesignTextBox}"
+                                         materialDesign:TextFieldAssist.HasClearButton="True"
+                                         Text="{Binding LabelFilter, UpdateSourceTrigger=PropertyChanged}" />
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              Margin="12 0"
+                                              Grid.Row="1"
+                                              MinHeight="120">
+                                    <ItemsControl Grid.IsSharedSizeScope="True"
+                                                  ItemsSource="{Binding Labels}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:Label}">
+                                                <Border x:Name="Border"
+                                                        Padding="8">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition SharedSizeGroup="Checkerz" />
+                                                            <ColumnDefinition />
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox VerticalAlignment="Center"
+                                                                  IsChecked="{Binding IsSelected}"
+                                                                  Grid.IsSharedSizeScope="True">
+                                                            <Grid Grid.Column="1"
+                                                                  Margin="8,0,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"
+                                                                                      SharedSizeGroup="A" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition />
+                                                                </Grid.RowDefinitions>
+                                                                <TextBlock FontWeight="Bold"
+                                                                           Text="{Binding .}" />
+                                                            </Grid>
+                                                        </CheckBox>
+                                                    </Grid>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}"
+                                                                 Value="True">
+                                                        <Setter TargetName="Border"
+                                                                Property="Background"
+                                                                Value="{DynamicResource MaterialDesignSelection}" />
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <Button Grid.Column="0"
+                                Grid.Row="1"
+                                Command="{Binding UpMergeCommand}"
+                                Margin="0 16 4 8"
+                                Content="{materialDesign:PackIcon ArrowUp}"
+                                ToolTip="Perform upmerge" />
+                        <controls:BranchSelect Grid.Column="0"
+                                               Grid.Row="2"
+                                               Versions="{Binding Path=UpMergeVersions}" />
+
+                        <Button Grid.Column="1"
+                                Grid.Row="1"
+                                Command="{Binding DownMergeCommand}"
+                                Margin="4 16 0 8"
+                                Content="{materialDesign:PackIcon ArrowDown}"
+                                ToolTip="Perform downmerge" />
+                        <controls:BranchSelect Grid.Column="1"
+                                               Grid.Row="2"
+                                               Versions="{Binding DownMergeVersions}" />
+                    </Grid>
+
+                    <Expander Grid.Column="0"
+                              Grid.Row="2"
+                              Grid.ColumnSpan="3"
+                              Margin="0,16,0,0"
+                              Header="Logs">
+                        <Border BorderThickness="2"
+                                BorderBrush="{DynamicResource MaterialDesignLightSeparatorBackground}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <ListView Grid.Row="0"
+                                          ItemsSource="{Binding Logs}"
+                                          Height="220">
+                                    <behavior:Interaction.Behaviors>
+                                        <local:ScrollToBehavior ScrollMode="Bottom"
+                                                                Enabled="True" />
+                                    </behavior:Interaction.Behaviors>
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem"
+                                               BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                            <Setter Property="Padding"
+                                                    Value="2" />
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+
+                                <Button Grid.Row="1"
+                                        Command="{Binding ClearLogsCommand}"
+                                        Content="Clear Logs" />
+                            </Grid>
+                        </Border>
+                    </Expander>
+                </Grid>
+            </materialDesign:DialogHost>
         </TabItem>
         <TabItem Header="Settings">
             <Grid Margin="16">
@@ -413,6 +416,7 @@
                     <ColumnDefinition />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -458,7 +462,17 @@
                          materialDesign:TextFieldAssist.HasClearButton="True"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
                          Text="{Binding RepoPath, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
-                <StackPanel Grid.Row="3"
+                <TextBox Grid.Row="3"
+                         Grid.Column="0"
+                         Grid.ColumnSpan="2"
+                         Margin="0,0,0,16"
+                         VerticalAlignment="Center"
+                         materialDesign:HintAssist.Hint="External Editor Path"
+                         ToolTip="The complete path the external editor .exe which you want to use for example to edit merge conflicts."
+                         materialDesign:TextFieldAssist.HasClearButton="True"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         Text="{Binding ExternalEditorPath, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
+                <StackPanel Grid.Row="4"
                             Grid.Column="0"
                             Grid.ColumnSpan="2"
                             Orientation="Horizontal">
@@ -476,11 +490,11 @@
                                           Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                           Text="{Binding MinSupportMinorVersion, UpdateSourceTrigger=LostFocus, Mode=TwoWay}" />
                 </StackPanel>
-                <CheckBox Grid.Row="4"
+                <CheckBox Grid.Row="5"
                           Grid.Column="0"
                           IsChecked="{Binding AddToMergeQueue}"
                           Content="Add to merge queue"
-                          ToolTip="Adds the created pull request automatically to the merge queue"/>
+                          ToolTip="Adds the created pull request automatically to the merge queue" />
             </Grid>
         </TabItem>
     </TabControl>
