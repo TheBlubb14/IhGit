@@ -48,21 +48,22 @@ public partial class MergeConflict : ObservableObject, IDisposable
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Description), nameof(IsResolved), nameof(DescriptionColor), nameof(OpenButtonVisible), nameof(ResolveButtonVisible))]
     private int _numberOfConflicts;
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(Description), nameof(OpenButtonVisible), nameof(ResolveButtonVisible))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Description), nameof(DescriptionColor), nameof(OpenButtonVisible), nameof(ResolveButtonVisible), nameof(IsResolved))]
     private bool _deletedOnRemote;
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Description))]
     private string? _remoteName;
 
-    public bool IsResolved => NumberOfConflicts == 0;
+    public bool IsResolved => DeletedOnRemote ? DeletedOnRemoteAction != MergeConflictAction.None :  NumberOfConflicts == 0;
 
     public bool OpenButtonVisible => !IsResolved && !DeletedOnRemote;
 
     public bool ResolveButtonVisible => !IsResolved && DeletedOnRemote;
 
-    public MergeConflictAction DeletedOnRemoteAction { get; private set; }
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsResolved), nameof(ResolveButtonVisible), nameof(DescriptionColor))]
+    private MergeConflictAction _deletedOnRemoteAction;
 
-    public SolidColorBrush DescriptionColor => NumberOfConflicts > 0 ? _warningBrush : _okBrush;
+    public SolidColorBrush DescriptionColor => IsResolved ? _okBrush : _warningBrush;
 
     public SolidColorBrush WarningBrush { get; } = _warningBrush;
     public SolidColorBrush OkBrush { get; } = _okBrush;
@@ -77,7 +78,7 @@ public partial class MergeConflict : ObservableObject, IDisposable
             {
                 return DeletedOnRemoteAction switch
                 {
-                    MergeConflictAction.DoNotIncludeFile => "File will not be included in the merge",
+                    MergeConflictAction.DoNotIncludeFile => "File will NOT be included in the merge",
                     MergeConflictAction.UseModifiedFile => "Modified file will be used",
                     _ => "Unknown"
                 };
