@@ -237,7 +237,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         {
             Pr = await client.PullRequest.Get(REPO_ID, prNum);
         }
-        catch (Exception ex) when (ex is Octokit.NotFoundException || ex is AuthorizationException || ex is ForbiddenException)
+        catch (Exception ex) when (ex is Octokit.NotFoundException or AuthorizationException or ForbiddenException)
         {
             MessageBox.Show(ex.Message);
             return;
