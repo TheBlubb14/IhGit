@@ -734,6 +734,11 @@ public sealed partial class MainViewModel : ObservableRecipient
                         var sha = commit.Value.Sha;
                         var c = repo.Lookup<LibGit2Sharp.Commit>(sha);
 
+                        if (c is null && await Git(new("Origin fetch failed") { ShowDialog = false }, "fetch", "origin", sha))
+                        {
+                            c = repo.Lookup<LibGit2Sharp.Commit>(sha);
+                        }
+
                         if (c is null)
                         {
                             do
