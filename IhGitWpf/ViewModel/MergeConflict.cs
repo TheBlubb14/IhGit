@@ -19,7 +19,7 @@ public partial class MergeConflict : ObservableObject, IDisposable
     [ObservableProperty, NotifyPropertyChangedFor(nameof(GitPath))]
     private string? _path;
 
-    public string? GitPath => $"{Path?.TrimEnd('/')}/{Name}";
+    public string? GitPath => string.IsNullOrEmpty(Path?.TrimEnd('/')) ? Name : $"{Path?.TrimEnd('/')}/{Name}";
 
     [ObservableProperty]
     private string? _repoPath;
