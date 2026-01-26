@@ -19,11 +19,11 @@ jobs:
       - name: Install .NET Core
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       # self-contained produces to big artifacts for github free plan
-      - name: Publish Forms
-        run: dotnet publish -c Release -o /output/no-self-contained IhGit/IhGit.csproj
+      # - name: Publish Forms
+      #   run: dotnet publish -c Release -o /output/no-self-contained IhGit/IhGit.csproj
 
       - name: Publish WPF
         run: dotnet publish -c Release -o /output/no-self-contained IhGitWpf/IhGitWpf.csproj
