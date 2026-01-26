@@ -233,7 +233,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         if (PrNumber == "0")
         {
-            var vm = new MergeConflictViewModel();
+            using var vm = new MergeConflictViewModel();
             vm.Items.Add(new()
             {
                 Name = "main1.yml",
@@ -262,6 +262,24 @@ public sealed partial class MainViewModel : ObservableRecipient
                 DataContext = vm
             };
             var res = await DialogHost.Show(mergeConflict);
+            return;
+        }
+        else if (PrNumber == "01")
+        {
+            var vm = new ProgressDialogViewModel()
+            {
+                Step = "checkout",
+                Branch = "feature/test",
+                CurrentBranchIndex = 1,
+                CurrentCommitIndex = 2,
+                TotalCommits = 2,
+                TotalBranches = 3,
+            };
+            var progressDialog = new Dialogs.ProgressDialog()
+            {
+                DataContext = vm
+            };
+            _ = await DialogHost.Show(progressDialog);
             return;
         }
 

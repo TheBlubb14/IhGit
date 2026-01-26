@@ -1,0 +1,69 @@
+﻿<UserControl x:Class="IhGitWpf.Dialogs.ProgressDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:system="clr-namespace:System;assembly=mscorlib"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:materialDesignConverters="clr-namespace:MaterialDesignThemes.Wpf.Converters;assembly=MaterialDesignThemes.Wpf"
+             xmlns:local="clr-namespace:IhGitWpf.Dialogs"
+             xmlns:vm="clr-namespace:IhGitWpf.ViewModel"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:ProgressDialogViewModel}"
+             d:DesignHeight="450"
+             d:DesignWidth="800">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <system:Boolean x:Key="False">False</system:Boolean>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid ColumnDefinitions="*"
+          RowDefinitions="Auto Auto Auto Auto Auto"
+          Margin="16">
+
+        <StackPanel Grid.Column="0"
+                    Grid.Row="0"
+                    Orientation="Horizontal">
+            <TextBlock Text="{Binding CurrentCommitIndex}" />
+            <TextBlock Text=" of " />
+            <TextBlock Text="{Binding TotalCommits}" />
+            <TextBlock Text=": " />
+
+            <TextBlock HorizontalAlignment="Center"
+                       Text="{Binding Step}" />
+        </StackPanel>
+
+        <ProgressBar Grid.Column="0"
+                     Grid.Row="1"
+                     IsIndeterminate="True"
+                     Value="{Binding CommitPercent, Mode=OneWay}" />
+
+
+        <StackPanel Grid.Column="0"
+                    Grid.Row="2"
+                    Margin=" 0 16 0 0"
+                    Orientation="Horizontal">
+
+            <TextBlock Text="{Binding CurrentBranchIndex}" />
+            <TextBlock Text=" of " />
+            <TextBlock Text="{Binding TotalBranches}" />
+            <TextBlock Text=": " />
+
+            <TextBlock HorizontalAlignment="Center"
+                       Text="{Binding Branch}" />
+        </StackPanel>
+        <ProgressBar Grid.Column="0"
+                     Grid.Row="3"
+                     Value="{Binding BranchPercent, Mode=OneWay}" />
+
+        <Button Grid.Column="0"
+                Grid.Row="4"
+                Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
+                CommandParameter="{StaticResource False}"
+                Content="Cancel"
+                IsCancel="True"
+                ToolTip="Cancel"
+                Style="{StaticResource MaterialDesignFlatButton}" />
+    </Grid>
+</UserControl>
