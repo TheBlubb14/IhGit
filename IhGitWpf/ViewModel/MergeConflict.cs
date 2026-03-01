@@ -32,7 +32,7 @@ public partial class MergeConflict : ObservableObject, IDisposable
         if (_fileWatcher is null)
             return;
 
-        if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(value))
+        if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(value) && Directory.Exists(value))
         {
             NumberOfConflicts = CountConflicts(value);
             _fileWatcher.Path = System.IO.Path.GetDirectoryName(value) ?? "";

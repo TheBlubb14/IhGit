@@ -14,56 +14,116 @@
              d:DesignWidth="800">
     <UserControl.Resources>
         <ResourceDictionary>
+            <system:Boolean x:Key="True">True</system:Boolean>
             <system:Boolean x:Key="False">False</system:Boolean>
         </ResourceDictionary>
     </UserControl.Resources>
-
-    <Grid ColumnDefinitions="*"
-          RowDefinitions="Auto Auto Auto Auto Auto"
-          Margin="16">
-
-        <StackPanel Grid.Column="0"
-                    Grid.Row="0"
-                    Orientation="Horizontal">
-            <TextBlock Text="{Binding CurrentCommitIndex}" />
-            <TextBlock Text=" of " />
-            <TextBlock Text="{Binding TotalCommits}" />
-            <TextBlock Text=": " />
-
-            <TextBlock HorizontalAlignment="Center"
-                       Text="{Binding Step}" />
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock HorizontalAlignment="Center"
+                   Grid.Row="0">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock"
+                       BasedOn="{StaticResource MaterialDesignHeadlineSmallTextBlock}">
+                    <Setter Property="Text"
+                            Value="Upmerge" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsUpmerge}"
+                                     Value="{StaticResource True}">
+                            <Setter Property="Text"
+                                    Value="Upmerge" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsUpmerge}"
+                                     Value="{StaticResource False}">
+                            <Setter Property="Text"
+                                    Value="Downmerge" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center">
+            <TextBlock Text="{Binding StartingBranch}"
+                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
+            <materialDesign:PackIcon VerticalAlignment="Center"
+                                     Margin="4 0">
+                <materialDesign:PackIcon.Style>
+                    <Style TargetType="{x:Type materialDesign:PackIcon}">
+                        <Setter Property="Kind"
+                                Value="ArrowRight" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsUpmerge}"
+                                         Value="{StaticResource True}">
+                                <Setter Property="Kind"
+                                        Value="ArrowRight" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsUpmerge}"
+                                         Value="{StaticResource False}">
+                                <Setter Property="Kind"
+                                        Value="ArrowLeft" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </materialDesign:PackIcon.Style>
+            </materialDesign:PackIcon>
+            <TextBlock Text="{Binding EndingBranch}"
+                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
         </StackPanel>
+        <StackPanel Grid.Row="2"
+                    Margin="16"
+                    Orientation="Vertical">
 
-        <ProgressBar Grid.Column="0"
-                     Grid.Row="1"
-                     IsIndeterminate="True"
-                     Value="{Binding CommitPercent, Mode=OneWay}" />
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding CurrentCommitIndex}" />
+                <TextBlock Text=" of " />
+                <TextBlock Text="{Binding TotalCommits}" />
+                <TextBlock Text=": " />
+                <TextBlock HorizontalAlignment="Center"
+                           Text="{Binding Step}" />
+            </StackPanel>
 
+            <TextBlock Text="{Binding CurrentCommit}"
+                       FontWeight="Bold"
+                       Margin="0 0 0 2" />
+            <ProgressBar IsIndeterminate="True"
+                         Value="{Binding CommitPercent, Mode=OneWay}" />
 
-        <StackPanel Grid.Column="0"
-                    Grid.Row="2"
-                    Margin=" 0 16 0 0"
-                    Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal"
+                        Margin="0 16 0 0">
+                <TextBlock Text="{Binding CurrentBranchIndex}" />
+                <TextBlock Text=" of " />
+                <TextBlock Text="{Binding TotalBranches}" />
+            </StackPanel>
 
-            <TextBlock Text="{Binding CurrentBranchIndex}" />
-            <TextBlock Text=" of " />
-            <TextBlock Text="{Binding TotalBranches}" />
-            <TextBlock Text=": " />
-
-            <TextBlock HorizontalAlignment="Center"
-                       Text="{Binding Branch}" />
+            <TextBlock Text="{Binding CurrentBranchName}"
+                       FontWeight="Bold"
+                       Margin="0 0 0 2" />
+            <ProgressBar Grid.Column="0"
+                         Grid.Row="3"
+                         Value="{Binding BranchPercent, Mode=OneWay}" />
         </StackPanel>
-        <ProgressBar Grid.Column="0"
-                     Grid.Row="3"
-                     Value="{Binding BranchPercent, Mode=OneWay}" />
-
-        <Button Grid.Column="0"
-                Grid.Row="4"
-                Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
-                CommandParameter="{StaticResource False}"
-                Content="Cancel"
-                IsCancel="True"
-                ToolTip="Cancel"
-                Style="{StaticResource MaterialDesignFlatButton}" />
+        <Grid Grid.Row="3"
+              ColumnDefinitions="* *">
+            <TextBlock Text="{Binding ElapsedTime}"
+                       Grid.Column="0"
+                       Margin="16 0"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center" />
+            <Button Content="Abort"
+                    ToolTip="Abort"
+                    Grid.Column="1"
+                    HorizontalAlignment="Right"
+                    Style="{DynamicResource MaterialDesignFlatButton}"
+                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
+                    CommandParameter="{StaticResource False}"
+                    IsCancel="True" />
+        </Grid>
     </Grid>
 </UserControl>

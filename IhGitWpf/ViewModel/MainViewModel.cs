@@ -23,6 +23,7 @@ using IhGitWpf.Properties;
 using System.Windows.Data;
 using Octokit.GraphQL;
 using MaterialDesignThemes.Wpf;
+using Humanizer;
 
 namespace IhGitWpf.ViewModel;
 
@@ -269,11 +270,29 @@ public sealed partial class MainViewModel : ObservableRecipient
             var vm = new ProgressDialogViewModel()
             {
                 Step = "checkout",
-                Branch = "feature/test",
                 CurrentBranchIndex = 1,
                 CurrentCommitIndex = 2,
-                TotalCommits = 2,
-                TotalBranches = 3,
+                IsUpmerge = true,
+                Branches = ["feature/test", "support/v4.21", "stable"],
+                Commits = ["commit1", "commit2", "commit3"],
+            };
+            var progressDialog = new Dialogs.ProgressDialog()
+            {
+                DataContext = vm
+            };
+            _ = await DialogHost.Show(progressDialog);
+            return;
+        }
+        else if (PrNumber == "02")
+        {
+            var vm = new ProgressDialogViewModel()
+            {
+                Step = "checkout",
+                CurrentBranchIndex = 1,
+                CurrentCommitIndex = 2,
+                IsUpmerge = false,
+                Branches = ["feature/test", "support/v4.21", "support/v4.20"],
+                Commits = ["commit1", "commit2", "commit3"],
             };
             var progressDialog = new Dialogs.ProgressDialog()
             {
@@ -555,6 +574,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanUpmerge))]
     private async Task UpMerge()
     {
+        var watch = Stopwatch.StartNew();
         for (int i = 0; i < UpMergeVersions.Count; i++)
         {
             var version = UpMergeVersions[i];
@@ -588,6 +608,8 @@ public sealed partial class MainViewModel : ObservableRecipient
                 }
             }
         }
+        watch.Stop();
+        MessageBox.Show($"Upmerge finished in {watch.Elapsed.Humanize()} successfully", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private bool CanDownmerge()
@@ -607,6 +629,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanDownmerge))]
     private async Task DownMerge()
     {
+        var watch = Stopwatch.StartNew();
         for (int i = 0; i < DownMergeVersions.Count; i++)
         {
             var version = DownMergeVersions[i];
@@ -640,6 +663,8 @@ public sealed partial class MainViewModel : ObservableRecipient
                 }
             }
         }
+        watch.Stop();
+        MessageBox.Show($"Downmerge finished in {watch.Elapsed.Humanize()} successfully", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private CredentialsHandler? GetCredentialsHandler()
