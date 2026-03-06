@@ -590,7 +590,11 @@ public sealed partial class MainViewModel : ObservableRecipient
             Step = "Starting..."
         };
         progressCts = new();
-        progressCts.Token.Register(() => DialogHost.Close(null));
+        progressCts.Token.Register(() =>
+        {
+            if (DialogHost.IsDialogOpen(null))
+                DialogHost.Close(null);
+        });
         ShowProgressDialog();
 
         var watch = Stopwatch.StartNew();
@@ -640,6 +644,8 @@ public sealed partial class MainViewModel : ObservableRecipient
             Log("Upmerge cancelled by user");
         }
         watch.Stop();
+
+        progressCts.Cancel();
         MessageBox.Show($"Upmerge finished in {watch.Elapsed.Humanize()} successfully", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
