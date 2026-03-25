@@ -1010,8 +1010,11 @@ public sealed partial class MainViewModel : ObservableRecipient
                 DataContext = vm
             };
 
-            // Hide the progress dialog
-            DialogHost.Close(null);
+            if (DialogHost.IsDialogOpen(null))
+            {
+                // Hide the progress dialog
+                DialogHost.Close(null);
+            }
 
             var res = await DialogHost.Show(mergeConflict);
 

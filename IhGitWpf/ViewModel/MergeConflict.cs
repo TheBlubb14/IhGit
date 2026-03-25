@@ -32,7 +32,7 @@ public partial class MergeConflict : ObservableObject, IDisposable
         if (_fileWatcher is null)
             return;
 
-        if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(value) && Directory.Exists(value))
+        if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(value) && File.Exists(value))
         {
             NumberOfConflicts = CountConflicts(value);
             _fileWatcher.Path = System.IO.Path.GetDirectoryName(value) ?? "";
@@ -54,9 +54,9 @@ public partial class MergeConflict : ObservableObject, IDisposable
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Description))]
     private string? _remoteName;
 
-    public bool IsResolved => DeletedOnRemote ? DeletedOnRemoteAction != MergeConflictAction.None :  NumberOfConflicts == 0;
+    public bool IsResolved => DeletedOnRemote ? DeletedOnRemoteAction != MergeConflictAction.None : NumberOfConflicts == 0;
 
-    public bool OpenButtonVisible => !IsResolved && !DeletedOnRemote;
+    public bool OpenButtonVisible => /*!IsResolved &&*/ !DeletedOnRemote;
 
     public bool ResolveButtonVisible => !IsResolved && DeletedOnRemote;
 
