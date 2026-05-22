@@ -34,7 +34,7 @@ public partial class MergeConflict : ObservableObject, IDisposable
 
         if (!DeletedOnRemote && !string.IsNullOrWhiteSpace(value) && File.Exists(value))
         {
-            NumberOfConflicts = CountConflicts(value);
+            (NumberOfConflicts, FirstConflictLineNumber) = CountConflicts(value);
             _fileWatcher.Path = System.IO.Path.GetDirectoryName(value) ?? "";
             _fileWatcher.Filter = System.IO.Path.GetFileName(value);
             _fileWatcher.EnableRaisingEvents = true;
@@ -47,6 +47,9 @@ public partial class MergeConflict : ObservableObject, IDisposable
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Description), nameof(IsResolved), nameof(DescriptionColor), nameof(OpenButtonVisible), nameof(ResolveButtonVisible))]
     private int _numberOfConflicts;
+
+    [ObservableProperty]
+    private int _firstConflictLineNumber;
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Description), nameof(DescriptionColor), nameof(OpenButtonVisible), nameof(ResolveButtonVisible), nameof(IsResolved))]
     private bool _deletedOnRemote;
@@ -107,24 +110,45 @@ public partial class MergeConflict : ObservableObject, IDisposable
         _fileWatcher = new();
         _fileWatcher.Changed += (sender, args) =>
         {
-            dispatcher.Invoke(() => NumberOfConflicts = CountConflicts(args.FullPath));
+            dispatcher.Invoke(() => (NumberOfConflicts, FirstConflictLineNumber) = CountConflicts(args.FullPath));
         };
     }
 
-    private static int CountConflicts(string fullPath)
+    private static (int CountConflicts, int FirstConflictLineNumber) CountConflicts(string fullPath)
     {
         if (!File.Exists(fullPath))
-            return 0;
+            return (0, 0);
 
         var content = ReadAllText(fullPath);
-        var markerCount = content
-            .Split([Environment.NewLine], StringSplitOptions.None)
-            .Count(line =>
-                line.StartsWith("<<<<<<<") ||
-                line.StartsWith(">>>>>>>") ||
-                line.StartsWith("====="));
+        //var markerCount = content
+        //    .Split([Environment.NewLine], StringSplitOptions.None)
+        //    .Count(line =>
+        //        line.StartsWith("<<<<<<<") ||
+        //        line.StartsWith(">>>>>>>") ||
+        //        line.StartsWith("====="));
 
-        return (int)Math.Ceiling(markerCount / 3d);
+        var markerCount = 0;
+        var currentLine = 0;
+        var firstConflictLineNumber = 0;
+        foreach (var line in content.Split([Environment.NewLine], StringSplitOptions.None))
+        {
+            currentLine++;
+
+            if (line.StartsWith("<<<<<<<"))
+            {
+                // Only count the first, as we can have multiple conflict sections in the same file, but we only want to jump to the first one when opening the file
+                if (firstConflictLineNumber == 0)
+                    firstConflictLineNumber = currentLine;
+
+                markerCount++;
+            }
+            else if (line.StartsWith(">>>>>>>") || line.StartsWith("====="))
+            {
+                markerCount++;
+            }
+        }
+
+        return ((int)Math.Ceiling(markerCount / 3d), firstConflictLineNumber);
     }
 
     private static string ReadAllText(string file, Encoding? encoding = null)
@@ -140,9 +164,14 @@ public partial class MergeConflict : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanOpenWithDefaultProgram))]
     private void Open()
     {
-        Process.Start(new ProcessStartInfo(Environment.ExpandEnvironmentVariables(Settings.Default.ExternalEditorPath))
+        var editorPath = Environment.ExpandEnvironmentVariables(Settings.Default.ExternalEditorPath);
+        var isCode = editorPath.EndsWith("code.exe", StringComparison.OrdinalIgnoreCase);
+
+        var arguments = isCode ? $"--goto \"{FullPath}:{FirstConflictLineNumber}\"" : $"\"{FullPath}\"";
+
+        Process.Start(new ProcessStartInfo(editorPath)
         {
-            Arguments = $"\"{FullPath}\"",
+            Arguments = arguments,
             WorkingDirectory = System.IO.Path.GetDirectoryName(FullPath) ?? "",
             UseShellExecute = false
         });
