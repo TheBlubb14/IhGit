@@ -739,51 +739,64 @@ public sealed partial class MainViewModel : ObservableRecipient
         MessageBox.Show($"Downmerge finished in {watch.Elapsed.Humanize()} successfully", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private CredentialsHandler? GetCredentialsHandler()
+    private async Task<bool> Fetch()
     {
-        try
-        {
-            var pw = string.IsNullOrWhiteSpace(Password) ? CredentialManager.GetCredentials("git:https://github.com")?.Password : Password;
-
-            if (pw is null)
-            {
-                MessageBox.Show("Either provide one in the textbox or ensure 'git:https://github.com' is in the windows credential store", "Could not read password");
-                return null;
-            }
-
-            return new CredentialsHandler((url, usernameFromUrl, types) =>
-            new UsernamePasswordCredentials()
-            {
-                Username = UserName,
-                Password = pw,
-            });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Cannot read 'git:https://github.com' from windows credential store{Environment.NewLine}{ex.Message}",
-                "Error reading git credtentials");
-            return null;
-        }
+        return await Git("fetch", "origin");
     }
 
-    private void Fetch()
+    /// <summary>
+    /// Runs git commands. If the command fails, shows a message box with the error and asks the user if it should retry or not.
+    /// </summary>
+    /// <param name="args"></param>
+    /// <returns></returns>
+    private async Task<bool> Git(params string[] args)
     {
-        using var repo = new Repository(RepoPath);
-
-        var log = "";
-        var remote = repo.Network.Remotes["origin"];
-        var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-
-        FetchOptions options = new()
+        bool retry = true;
+        while (retry)
         {
-            CredentialsProvider = GetCredentialsHandler()
-        };
+            var success = await RunGitCommand(args);
+            if (success)
+            {
+                return true;
+            }
 
-        if (options.CredentialsProvider is null)
-            return;
+            // Show error dialog and ask user to retry or abort
+            var result = MessageBox.Show($"git {string.Join(' ', args)}", "Git command failed", MessageBoxButton.RetryCancel);
 
-        Commands.Fetch(repo, remote.Name, refSpecs, options, log);
-        Log(log);
+            switch (result)
+            {
+                case MessageBoxResult.Retry:
+                    retry = true;
+                    break;
+                case MessageBoxResult.Cancel:
+                default:
+                    return false;
+            }
+        }
+
+        return false;
+    }
+
+    private async Task<bool> RunGitCommand(params string[] args)
+    {
+        using Process process = Process.Start(new ProcessStartInfo("git", args)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+            WorkingDirectory = RepoPath,
+        })!;
+        await foreach (ProcessOutputLine line in process.ReadAllLinesAsync())
+        {
+            if (line.StandardError)
+                Log("ERROR " + line.Content);
+            else
+                Log(line.Content);
+        }
+        return process.ExitCode == 0;
     }
 
     private void Log(string msg)
@@ -797,7 +810,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (repo.Branches[newBranchName] is null)
         {
             // checkout a new branch from remote branch and switch to the new branch
-            return await Git(new("git checkout failed", $"git checkout -b {newBranchName} origin/{remoteBranchName} failed"), "checkout", "-b", newBranchName, $"origin/{remoteBranchName}", "--no-track");
+            return await Git("checkout", "-b", newBranchName, $"origin/{remoteBranchName}", "--no-track");
         }
         else
         {
@@ -810,7 +823,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         try
         {
-            await Git(new("checkout failed"), $"checkout", newBranch);
+            await Git("checkout", newBranch);
             using var repo = new Repository(RepoPath);
             return repo.Branches[newBranch] is not null;
         }
@@ -833,7 +846,7 @@ public sealed partial class MainViewModel : ObservableRecipient
             progressDialogViewModel?.Commits = [.. commits.Select(x => x.ToString())];
 
             progressDialogViewModel?.Step = "Fetching";
-            Fetch();
+            await Fetch();
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -875,7 +888,7 @@ public sealed partial class MainViewModel : ObservableRecipient
                         {
                             progressDialogViewModel?.Step = "Fetching origin";
 
-                            if (await Git(new("Origin fetch failed") { ShowDialog = false }, "fetch", "origin", sha))
+                            if (await Git("fetch", "origin", sha))
                             {
                                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -1034,25 +1047,25 @@ public sealed partial class MainViewModel : ObservableRecipient
                     if (item.DeletedOnRemoteAction == MergeConflictAction.UseModifiedFile)
                     {
                         // Use modified file
-                        await Git(new("git add failed", $"git add {path} failed"), "add", path);
+                        await Git("add", path);
                     }
                     else if (item.DeletedOnRemoteAction == MergeConflictAction.DoNotIncludeFile)
                     {
                         // Use deleted file
-                        await Git(new("git rm failed", $"git rm {path} failed"), "rm", path);
+                        await Git("rm", path);
                     }
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
                 // cherry pick continue
-                await Git(new("add . failed", ShowDialog: false), "add", ".");
+                await Git("add", ".");
 
                 cancellationToken.ThrowIfCancellationRequested();
-                await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
+                await Git("cherry-pick", "--continue");
             }
             else if (res is false)
             {
-                await Git(new("cherry pick abort failed"), "cherry-pick", "--abort");
+                await Git("cherry-pick", "--abort");
                 cancellationToken.ThrowIfCancellationRequested();
                 return false;
             }
@@ -1064,8 +1077,8 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanStatus))]
     private async Task Status()
     {
-        await Git(new("git status failed"), "status");
-        Fetch();
+        await Git("status");
+        await Fetch();
         await ResolveMergeConflicts(CancellationToken.None);
     }
 
@@ -1164,55 +1177,15 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     private async Task CreateNewBranch(string name)
     {
-        await Git(new("git checkout failed", $"git checkout -b {name} failed"), "checkout", "-b", name);
+        await Git("checkout", "-b", name);
     }
 
     record ErrorInfo(string ErrorTitle, string? ErrorMessage = null, bool ShowDialog = true);
-    private async Task<bool> Git(ErrorInfo errorInfo, params string[] arg)
-    {
-        var retry = false;
-        do
-        {
-            retry = false;
-            var messages = new StringBuilder();
-            try
-            {
-                var pipe = PipeTarget.Merge(PipeTarget.ToDelegate(Log), PipeTarget.ToStringBuilder(messages));
-                var cmd = Cli.Wrap("git.exe")
-                    .WithArguments(arg)
-                    .WithStandardErrorPipe(pipe)
-                    .WithStandardOutputPipe(pipe)
-                    .WithWorkingDirectory(RepoPath);
-                await cmd.ExecuteAsync();
-            }
-            catch (CommandExecutionException)
-            {
-                if (!errorInfo.ShowDialog)
-                    return false;
-
-                var msg = errorInfo.ErrorMessage is null ? messages.ToString() : errorInfo.ErrorMessage + Environment.NewLine + Environment.NewLine + messages.ToString();
-                var result = MessageBox.Show("Ok: Retry\r\nCancel: Abort\r\n\r\n" + msg, errorInfo.ErrorTitle, MessageBoxButton.OKCancel);
-
-                switch (result)
-                {
-                    case MessageBoxResult.OK:
-                        retry = true;
-                        break;
-
-                    case MessageBoxResult.Cancel:
-                    default:
-                        return false;
-                }
-            }
-        } while (retry);
-
-        return true;
-    }
 
     private async Task Push()
     {
         progressDialogViewModel?.Step = "Pushing";
-        await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName().ToString());
+        await Git("push", "-u", "origin", CurrentBranchName().ToString());
     }
 
     private async Task MergeQueue(PullRequest? inputPr)

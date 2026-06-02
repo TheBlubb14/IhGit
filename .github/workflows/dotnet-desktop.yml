@@ -19,7 +19,7 @@ jobs:
       - name: Install .NET Core
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       # self-contained produces to big artifacts for github free plan
       # - name: Publish Forms
