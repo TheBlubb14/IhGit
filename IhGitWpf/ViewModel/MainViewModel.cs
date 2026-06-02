@@ -1120,11 +1120,25 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (AddToMergeQueue)
         {
             progressDialogViewModel?.Step = "Adding to merge queue";
-            await MergeQueue(newPr);
+            try
+            {
+                await MergeQueue(newPr);
+            }
+            catch (Exception ex)
+            {
+                Log($"Adding to merge queue failed with: {ex.Message}");
+            }
         }
 
         progressDialogViewModel?.Step = "Opening pull request url";
-        OpenUrl(newPr.HtmlUrl);
+        try
+        {
+            OpenUrl(newPr.HtmlUrl);
+        }
+        catch (Exception ex)
+        {
+            Log($"Opening pull request url failed with: {ex.Message}");
+        }
     }
 
     private void OpenUrl(string url)
