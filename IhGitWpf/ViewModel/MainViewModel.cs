@@ -1,16 +1,11 @@
-﻿using AdysTech.CredentialManager;
-using CliWrap;
-using CliWrap.Exceptions;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Humanizer;
 using IhGitWpf.Properties;
 using LibGit2Sharp;
-using LibGit2Sharp.Handlers;
 using MaterialDesignThemes.Wpf;
 using Octokit;
 using Octokit.GraphQL;
-using Octokit.GraphQL.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
