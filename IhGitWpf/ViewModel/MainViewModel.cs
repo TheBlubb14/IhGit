@@ -1,28 +1,31 @@
 ﻿using AdysTech.CredentialManager;
-using CliWrap.Exceptions;
 using CliWrap;
+using CliWrap.Exceptions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Humanizer;
+using IhGitWpf.Properties;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
+using MaterialDesignThemes.Wpf;
 using Octokit;
+using Octokit.GraphQL;
+using Octokit.GraphQL.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using Repository = LibGit2Sharp.Repository;
-using System.ComponentModel;
-using System.IO;
-using System.Windows.Threading;
-using IhGitWpf.Properties;
 using System.Windows.Data;
-using Octokit.GraphQL;
-using MaterialDesignThemes.Wpf;
+using System.Windows.Threading;
+using Repository = LibGit2Sharp.Repository;
 
 namespace IhGitWpf.ViewModel;
 
@@ -161,6 +164,8 @@ public sealed partial class MainViewModel : ObservableRecipient
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
     private ListCollectionView? reviewerView;
     private ListCollectionView? labelView;
+    private CancellationTokenSource progressCts = new();
+    private ProgressDialogViewModel? progressDialogViewModel = null;
 
     [GeneratedRegex("I(\\d*)")]
     private static partial Regex ZohoTicketRegex();
@@ -233,7 +238,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         if (PrNumber == "0")
         {
-            var vm = new MergeConflictViewModel();
+            using var vm = new MergeConflictViewModel();
             vm.Items.Add(new()
             {
                 Name = "main1.yml",
@@ -262,6 +267,44 @@ public sealed partial class MainViewModel : ObservableRecipient
                 DataContext = vm
             };
             var res = await DialogHost.Show(mergeConflict);
+            return;
+        }
+        else if (PrNumber == "01")
+        {
+            var vm = new ProgressDialogViewModel()
+            {
+                Step = "checkout",
+                StartingBranch = CurrentBranchName(),
+                CurrentBranchIndex = 1,
+                CurrentCommitIndex = 2,
+                IsUpmerge = true,
+                Branches = ["feature/test", "support/v4.21", "stable"],
+                Commits = ["commit1", "commit2", "commit3"],
+            };
+            var progressDialog = new Dialogs.ProgressDialog()
+            {
+                DataContext = vm
+            };
+            _ = await DialogHost.Show(progressDialog);
+            return;
+        }
+        else if (PrNumber == "02")
+        {
+            var vm = new ProgressDialogViewModel()
+            {
+                Step = "checkout",
+                StartingBranch = CurrentBranchName(),
+                CurrentBranchIndex = 1,
+                CurrentCommitIndex = 2,
+                IsUpmerge = false,
+                Branches = ["feature/test", "support/v4.21", "support/v4.20"],
+                Commits = ["commit1", "commit2", "commit3"],
+            };
+            var progressDialog = new Dialogs.ProgressDialog()
+            {
+                DataContext = vm
+            };
+            _ = await DialogHost.Show(progressDialog);
             return;
         }
 
@@ -489,6 +532,9 @@ public sealed partial class MainViewModel : ObservableRecipient
         Labels.Clear();
         CurrentVersion = "";
 
+        progressDialogViewModel?.Dispose();
+        progressDialogViewModel = null;
+
         if (clearAll)
         {
             PrNumber = "";
@@ -537,38 +583,82 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanUpmerge))]
     private async Task UpMerge()
     {
-        for (int i = 0; i < UpMergeVersions.Count; i++)
+        progressDialogViewModel = new()
         {
-            var version = UpMergeVersions[i];
+            StartingBranch = CurrentBranchName(),
+            Branches = [.. UpMergeVersions.Where(x => !x.IsCherryPicked && x.IsSelected).Select(x => x.GetRemoteBranchName())],
+            Step = "Starting..."
+        };
+        progressCts = new();
+        progressCts.Token.Register(() =>
+        {
+            if (DialogHost.IsDialogOpen(null))
+                DialogHost.Close(null);
+        });
+        ShowProgressDialog();
 
-            if (version.IsCherryPicked || version.IsCherryPicked || !version.IsSelected)
-                continue;
+        var watch = Stopwatch.StartNew();
+        try
+        {
+            for (int i = 0; i < UpMergeVersions.Count; i++)
+            {
+                var version = UpMergeVersions[i];
 
-            var success = await MergeOne(version, true);
-            if (success)
-            {
-                version.IsCherryPicked = true;
-            }
-            else
-            {
-                var result = MessageBox.Show(
-                    $"Upmerge of version {version} failed.\r\n" +
-                    $"Yes: Retry\r\n" +
-                    $"No: Skip this version\r\n" +
-                    $"Cancel: Cancel the rest of the upmerge",
-                    "Upmerge failed",
-                    MessageBoxButton.YesNoCancel);
-                switch (result)
+                if (version.IsCherryPicked || !version.IsSelected)
+                    continue;
+
+                progressDialogViewModel.CurrentBranchIndex++;
+                progressCts.Token.ThrowIfCancellationRequested();
+
+                var success = await MergeOne(version, true, progressCts.Token);
+                if (success)
                 {
-                    case MessageBoxResult.Cancel:
-                        return;
-                    case MessageBoxResult.Yes:
-                        i--;
-                        break;
-                    case MessageBoxResult.No:
-                        continue;
+                    version.IsCherryPicked = true;
+                }
+                else
+                {
+                    var result = MessageBox.Show(
+                        $"Upmerge of version {version} failed.\r\n" +
+                        $"Yes: Retry\r\n" +
+                        $"No: Skip this version\r\n" +
+                        $"Cancel: Cancel the rest of the upmerge",
+                        "Upmerge failed",
+                        MessageBoxButton.YesNoCancel);
+                    switch (result)
+                    {
+                        case MessageBoxResult.Cancel:
+                            progressCts.Cancel();
+                            return;
+                        case MessageBoxResult.Yes:
+                            i--;
+                            break;
+                        case MessageBoxResult.No:
+                            progressDialogViewModel.CurrentBranchIndex++;
+                            continue;
+                    }
                 }
             }
+        }
+        catch (OperationCanceledException ex) when (ex.CancellationToken == progressCts.Token)
+        {
+            Log("Upmerge cancelled by user");
+        }
+        watch.Stop();
+
+        progressCts.Cancel();
+        MessageBox.Show($"Upmerge finished in {watch.Elapsed.Humanize()} successfully", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void ShowProgressDialog()
+    {
+        _ = DialogHost.Show(new Dialogs.ProgressDialog() { DataContext = progressDialogViewModel }, ProgressDialogClosing);
+    }
+
+    private void ProgressDialogClosing(object sender, DialogClosingEventArgs args)
+    {
+        if (args.Parameter is false)
+        {
+            progressCts.Cancel();
         }
     }
 
@@ -589,39 +679,64 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanDownmerge))]
     private async Task DownMerge()
     {
-        for (int i = 0; i < DownMergeVersions.Count; i++)
+        progressDialogViewModel = new()
         {
-            var version = DownMergeVersions[i];
+            StartingBranch = CurrentBranchName(),
+            Branches = [.. DownMergeVersions.Where(x => !x.IsCherryPicked && x.IsSelected).Select(x => x.GetRemoteBranchName())],
+            Step = "Starting..."
+        };
+        progressCts = new();
+        progressCts.Token.Register(() => DialogHost.Close(null));
+        ShowProgressDialog();
 
-            if (version.IsCherryPicked || version.IsCherryPicked || !version.IsSelected)
-                continue;
+        var watch = Stopwatch.StartNew();
+        try
+        {
+            for (int i = 0; i < DownMergeVersions.Count; i++)
+            {
+                var version = DownMergeVersions[i];
 
-            var success = await MergeOne(version, false);
-            if (success)
-            {
-                version.IsCherryPicked = true;
-            }
-            else
-            {
-                var result = MessageBox.Show(
-                    $"Downmerge of version {version} failed.\r\n" +
-                    $"Yes: Retry\r\n" +
-                    $"No: Skip this version\r\n" +
-                    $"Cancel: Cancel the rest of the Downmerge",
-                    "Downmerge failed",
-                    MessageBoxButton.YesNoCancel);
-                switch (result)
+                if (version.IsCherryPicked || !version.IsSelected)
+                    continue;
+
+                progressDialogViewModel.CurrentBranchIndex++;
+                progressCts.Token.ThrowIfCancellationRequested();
+
+                var success = await MergeOne(version, false, progressCts.Token);
+                if (success)
                 {
-                    case MessageBoxResult.Cancel:
-                        return;
-                    case MessageBoxResult.Yes:
-                        i--;
-                        break;
-                    case MessageBoxResult.No:
-                        continue;
+                    version.IsCherryPicked = true;
+                }
+                else
+                {
+                    var result = MessageBox.Show(
+                        $"Downmerge of version {version} failed.\r\n" +
+                        $"Yes: Retry\r\n" +
+                        $"No: Skip this version\r\n" +
+                        $"Cancel: Cancel the rest of the Downmerge",
+                        "Downmerge failed",
+                        MessageBoxButton.YesNoCancel);
+                    switch (result)
+                    {
+                        case MessageBoxResult.Cancel:
+                            progressCts.Cancel();
+                            return;
+                        case MessageBoxResult.Yes:
+                            i--;
+                            break;
+                        case MessageBoxResult.No:
+                            progressDialogViewModel.CurrentBranchIndex++;
+                            continue;
+                    }
                 }
             }
         }
+        catch (OperationCanceledException ex) when (ex.CancellationToken == progressCts.Token)
+        {
+            Log("Downmerge cancelled by user");
+        }
+        watch.Stop();
+        MessageBox.Show($"Downmerge finished in {watch.Elapsed.Humanize()} successfully", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private CredentialsHandler? GetCredentialsHandler()
@@ -706,20 +821,36 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
     }
 
-    private async Task<bool> MergeOne(BranchVersion mergeToVersion, bool isUpMerge)
+    private async Task<bool> MergeOne(BranchVersion mergeToVersion, bool isUpMerge, CancellationToken cancellationToken)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var commits = Commits.Where(x => x.IsSelected).ToArray();
+
+            progressDialogViewModel?.IsUpmerge = isUpMerge;
+            progressDialogViewModel?.Commits = [.. commits.Select(x => x.ToString())];
+
+            progressDialogViewModel?.Step = "Fetching";
             Fetch();
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            progressDialogViewModel?.Step = "Switching branch";
             if (!await CreateAndSwitchBranch(mergeToVersion.GetBranchNameForChanges(FeatureName), mergeToVersion.ToString()))
                 return false;
 
-            foreach (var commit in Commits.Where(x => x.IsSelected).ToArray())
+            cancellationToken.ThrowIfCancellationRequested();
+
+            foreach (var commit in commits)
             {
                 var hasConflicts = false;
+                progressDialogViewModel?.Step = "Checking for conflicts";
                 if (HasConflicts())
                 {
                     hasConflicts = true;
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
                 else
                 {
@@ -728,15 +859,29 @@ public sealed partial class MainViewModel : ObservableRecipient
                     {
                         CommitOnSuccess = true,
                     };
+
                     Log("Cherry pick: " + commit);
+                    progressDialogViewModel?.Step = "Lookup commit";
+                    progressDialogViewModel?.CurrentCommitIndex = progressDialogViewModel.CurrentCommitIndex + 1;
+
                     try
                     {
                         var sha = commit.Value.Sha;
                         var c = repo.Lookup<LibGit2Sharp.Commit>(sha);
 
-                        if (c is null && await Git(new("Origin fetch failed") { ShowDialog = false }, "fetch", "origin", sha))
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        if (c is null)
                         {
-                            c = repo.Lookup<LibGit2Sharp.Commit>(sha);
+                            progressDialogViewModel?.Step = "Fetching origin";
+
+                            if (await Git(new("Origin fetch failed") { ShowDialog = false }, "fetch", "origin", sha))
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
+
+                                progressDialogViewModel?.Step = "Lookup commit";
+                                c = repo.Lookup<LibGit2Sharp.Commit>(sha);
+                            }
                         }
 
                         if (c is null)
@@ -745,6 +890,7 @@ public sealed partial class MainViewModel : ObservableRecipient
                             {
                                 if (Pr is null || Pr.ClosedAt is null)
                                 {
+                                    cancellationToken.ThrowIfCancellationRequested();
                                     MessageBox.Show($"Commit: {sha}", "Commit doesn't exist");
                                 }
                                 else
@@ -760,6 +906,9 @@ public sealed partial class MainViewModel : ObservableRecipient
 
                                     if (mbox == MessageBoxResult.Yes)
                                     {
+                                        progressDialogViewModel?.Step = "Lookup commit";
+
+                                        cancellationToken.ThrowIfCancellationRequested();
                                         c = repo.Lookup<LibGit2Sharp.Commit>(sha);
                                     }
                                     else if (mbox == MessageBoxResult.No)
@@ -778,8 +927,12 @@ public sealed partial class MainViewModel : ObservableRecipient
                         if (c is null)
                             continue;
 
+                        cancellationToken.ThrowIfCancellationRequested();
+                        progressDialogViewModel?.Step = "Cherry pick";
                         var result = repo.CherryPick(c, c.Author, options);
                         hasConflicts = result.Status == CherryPickStatus.Conflicts;
+
+                        cancellationToken.ThrowIfCancellationRequested();
                     }
                     catch (LibGit2SharpException ex)
                     {
@@ -791,14 +944,21 @@ public sealed partial class MainViewModel : ObservableRecipient
 
                 if (hasConflicts)
                 {
-                    if (!await ResolveMergeConflicts())
+                    progressDialogViewModel?.Step = "Merge conflicts";
+
+                    if (!await ResolveMergeConflicts(cancellationToken))
                         return false;
                 }
+
+                cancellationToken.ThrowIfCancellationRequested();
             }
             await Push();
             await PullRequest(mergeToVersion, isUpMerge);
         }
-
+        catch (OperationCanceledException ex) when (ex.CancellationToken == progressCts.Token)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             MessageBox.Show(ex.Message, "Error during merge");
@@ -807,13 +967,15 @@ public sealed partial class MainViewModel : ObservableRecipient
         return true;
     }
 
-    private async Task<bool> ResolveMergeConflicts()
+    private async Task<bool> ResolveMergeConflicts(CancellationToken cancellationToken)
     {
         if (!HasConflicts())
             return true;
 
         do
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using var repo = new Repository(RepoPath);
             var conflicts = repo.Index.Conflicts.Cast<Conflict>();
             var files = Environment.NewLine + string.Join(Environment.NewLine, conflicts.Select(x => x?.Ancestor?.Path ?? ""));
@@ -841,11 +1003,22 @@ public sealed partial class MainViewModel : ObservableRecipient
                 });
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             var mergeConflict = new Dialogs.MergeConflict()
             {
                 DataContext = vm
             };
+
+            if (DialogHost.IsDialogOpen(null))
+            {
+                // Hide the progress dialog
+                DialogHost.Close(null);
+            }
+
             var res = await DialogHost.Show(mergeConflict);
+
+            ShowProgressDialog();
 
             if (res is true)
             {
@@ -857,6 +1030,7 @@ public sealed partial class MainViewModel : ObservableRecipient
 
                     Log($"Resolving conflict for {path} with action {item.DeletedOnRemoteAction}");
 
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (item.DeletedOnRemoteAction == MergeConflictAction.UseModifiedFile)
                     {
                         // Use modified file
@@ -869,13 +1043,18 @@ public sealed partial class MainViewModel : ObservableRecipient
                     }
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 // cherry pick continue
                 await Git(new("add . failed", ShowDialog: false), "add", ".");
+
+                cancellationToken.ThrowIfCancellationRequested();
                 await Git(new("cherry pick continue failed"), "cherry-pick", "--continue");
             }
             else if (res is false)
             {
                 await Git(new("cherry pick abort failed"), "cherry-pick", "--abort");
+                cancellationToken.ThrowIfCancellationRequested();
+                return false;
             }
         } while (HasConflicts());
 
@@ -887,7 +1066,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         await Git(new("git status failed"), "status");
         Fetch();
-        await ResolveMergeConflicts();
+        await ResolveMergeConflicts(CancellationToken.None);
     }
 
     private bool CanStatus()
@@ -903,6 +1082,8 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     private async Task PullRequest(BranchVersion newBranchVersion, bool isUpMerge)
     {
+        progressDialogViewModel?.Step = "Creating pull request";
+
         var client = new GitHubClient(new Octokit.ProductHeaderValue(PRODUCT));
         var tokenAuth = new Octokit.Credentials(GitHubToken);
         client.Credentials = tokenAuth;
@@ -937,9 +1118,27 @@ public sealed partial class MainViewModel : ObservableRecipient
         await client.Issue.Labels.AddToIssue(REPO_ID, newPr.Number, [.. Labels.Where(x => x.IsSelected).Select(x => x.GithubLabel.Name), mergeLabel]);
 
         if (AddToMergeQueue)
-            await MergeQueue(newPr);
+        {
+            progressDialogViewModel?.Step = "Adding to merge queue";
+            try
+            {
+                await MergeQueue(newPr);
+            }
+            catch (Exception ex)
+            {
+                Log($"Adding to merge queue failed with: {ex.Message}");
+            }
+        }
 
-        OpenUrl(newPr.HtmlUrl);
+        progressDialogViewModel?.Step = "Opening pull request url";
+        try
+        {
+            OpenUrl(newPr.HtmlUrl);
+        }
+        catch (Exception ex)
+        {
+            Log($"Opening pull request url failed with: {ex.Message}");
+        }
     }
 
     private void OpenUrl(string url)
@@ -1012,6 +1211,7 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     private async Task Push()
     {
+        progressDialogViewModel?.Step = "Pushing";
         await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName().ToString());
     }
 
