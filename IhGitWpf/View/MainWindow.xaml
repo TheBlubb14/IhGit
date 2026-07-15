@@ -421,6 +421,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
                 <TextBox Grid.Row="0"
@@ -484,6 +485,15 @@
                           IsChecked="{Binding AddToMergeQueue}"
                           Content="Add to merge queue"
                           ToolTip="Adds the created pull request automatically to the merge queue" />
+                <StackPanel Grid.Row="5"
+                            Grid.Column="0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Left">
+                    <Button Content="Delete TPM key"
+                            ToolTip="Deletes the stored GitHub secret, the stored TPM key for this application and makes the encrypted GitHub secret un-decryptable. The next time you try to use the app, it will try to re-login to GitHub"
+                            Command="{Binding DeleteTpmKeyCommand}" />
+                </StackPanel>
             </Grid>
         </TabItem>
     </TabControl>

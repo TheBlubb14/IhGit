@@ -465,6 +465,19 @@ public sealed partial class MainViewModel : ObservableRecipient
             return;
         }
 
+        if (PrNumber.StartsWith("0"))
+        {
+            try
+            {
+                await MergeQueue(client, Pr);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            return;
+        }
+
         Title = Pr.Title;
         Body = Pr.Body;
         var a = await client.PullRequest.Commits(REPO_ID, prNum);
@@ -1205,6 +1218,13 @@ public sealed partial class MainViewModel : ObservableRecipient
         await ResolveMergeConflicts(CancellationToken.None);
     }
 
+    [RelayCommand]
+    private void DeleteTpmKey()
+    {
+        AesGcmEncryption.DeleteTpmKey(PRODUCT);
+        GitHubOAuth = null;
+    }
+
     private bool CanStatus()
     {
         return RepoPath is not null && Directory.Exists(RepoPath);
@@ -1259,7 +1279,7 @@ public sealed partial class MainViewModel : ObservableRecipient
             progressDialogViewModel?.Step = "Adding to merge queue";
             try
             {
-                await MergeQueue(newPr);
+                await MergeQueue(client, newPr);
             }
             catch (Exception ex)
             {
@@ -1352,14 +1372,9 @@ public sealed partial class MainViewModel : ObservableRecipient
         await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName().ToString());
     }
 
-    private async Task MergeQueue(PullRequest? inputPr)
+    private async Task MergeQueue(GitHubClient client, PullRequest? inputPr)
     {
         if (inputPr is null)
-            return;
-
-        var client = await AuthToGitHub();
-
-        if (client is null)
             return;
 
         var token = GitHubOAuth?.AccessToken;
@@ -1368,22 +1383,44 @@ public sealed partial class MainViewModel : ObservableRecipient
 
         var connection = new Octokit.GraphQL.Connection(new(PRODUCT), token);
 
-        var hasMergeQueueQuery = new Query()
-            .Repository(new(REPO), new(ORGA))
-            .MergeQueue(new(inputPr.Base.Ref))
-            .Select(x => x.Id);
+        var repoQuery = new Query()
+            .Repository(new(REPO), new(ORGA));
 
-        var hasMergeQueue = await connection.Run(hasMergeQueueQuery);
-        if (hasMergeQueue is { Value.Length: > 0 })
+        var prQuery = repoQuery
+            .PullRequest(new(inputPr.Number));
+
+        var autoMergeAllowed = await connection.Run(repoQuery.Select(x => x.AutoMergeAllowed).Compile());
+        var isMergeQueueEnabled = await connection.Run(prQuery.Select(x => x.IsMergeQueueEnabled).Compile());
+        var isInMergeQueue = await connection.Run(prQuery.Select(x => x.IsInMergeQueue).Compile());
+
+        if (isMergeQueueEnabled && !isInMergeQueue)
         {
-            var enable = new Mutation()
-                .EnablePullRequestAutoMerge(new Octokit.GraphQL.Model.EnablePullRequestAutoMergeInput()
-                {
-                    PullRequestId = new(inputPr.NodeId),
-                })
-                .Select(x => x.PullRequest.Number);
+            if (autoMergeAllowed)
+            {
+                _ = await connection.Run(new Mutation()
+                    .EnablePullRequestAutoMerge(new Octokit.GraphQL.Model.EnablePullRequestAutoMergeInput()
+                    {
+                        PullRequestId = new(inputPr.NodeId),
+                        MergeMethod = Octokit.GraphQL.Model.PullRequestMergeMethod.Rebase,
+                    })
+                    .Select(x => x.Select(y => y.PullRequest.AutoMergeRequest.EnabledAt)));
+            }
+            // https://github.com/cli/cli/issues/13398
+            // https://github.com/cli/cli/issues/8352
+            // https://github.com/orgs/community/discussions/24719
+            // https://github.com/github/docs/issues/31369
+            // 'Pull request At least 1 approving review is required by reviewers with write access.'
+            //else
+            //{
+            //    var enable = new Mutation()
+            //        .EnqueuePullRequest(new Octokit.GraphQL.Model.EnqueuePullRequestInput()
+            //        {
+            //            PullRequestId = new(inputPr.NodeId),
+            //        }).Select(x => x.Select(y => y.MergeQueueEntry.EstimatedTimeToMerge));
 
-            _ = await connection.Run(enable);
+            //    var estimatedTimeToMerge = await connection.Run(enable);
+            //    Log($"Estimated time to merge: {TimeSpan.FromSeconds(estimatedTimeToMerge?.Single() ?? 0).Humanize()}");
+            //}
         }
         else
         {
