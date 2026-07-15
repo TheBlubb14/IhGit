@@ -26,5 +26,8 @@
     <Setting Name="ExternalEditorPath" Type="System.String" Scope="User">
       <Value Profile="(Default)">%localappdata%/Programs/Microsoft VS Code/Code.exe</Value>
     </Setting>
+    <Setting Name="GitHubOAuth" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

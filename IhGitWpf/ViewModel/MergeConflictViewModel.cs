@@ -34,7 +34,7 @@ public partial class MergeConflictViewModel : ObservableObject, IDisposable
         }
     }
 
-    private static readonly string[] motd = ["I think you have conflicts", "We have some conflicts", "Resolve your conflicts"];
+    private static readonly string[] motd = ["I think you have conflicts", "We have some conflicts", "Resolve your conflicts", "Seefeld we have conflicts"];
     public string MessageOfTheDay => motd[DateTime.Now.Day % motd.Length];
 
 

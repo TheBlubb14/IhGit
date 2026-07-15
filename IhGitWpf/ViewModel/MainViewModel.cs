@@ -10,7 +10,6 @@ using LibGit2Sharp.Handlers;
 using MaterialDesignThemes.Wpf;
 using Octokit;
 using Octokit.GraphQL;
-using Octokit.GraphQL.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -32,6 +31,7 @@ namespace IhGitWpf.ViewModel;
 public sealed partial class MainViewModel : ObservableRecipient
 {
     private const string PRODUCT = "IhGit";
+    private const string CLIENT_ID = "Iv23liqg3iI65qU2gRA7";
     private const string ORGA = "airsphere-gmbh";
     private const string REPO = "PaxControl";
     private const long REPO_ID = 194316446;
@@ -50,6 +50,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnMinSupportMajorVersionChanged(int value)
     {
         Settings.Default.MinSupportMajorVersion = value;
+        Settings.Default.Save();
     }
 
     [ObservableProperty]
@@ -58,6 +59,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnMinSupportMinorVersionChanged(int value)
     {
         Settings.Default.MinSupportMinorVersion = value;
+        Settings.Default.Save();
     }
 
     [ObservableProperty]
@@ -66,6 +68,39 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnAddToMergeQueueChanged(bool value)
     {
         Settings.Default.AddToMergeQueue = value;
+        Settings.Default.Save();
+    }
+
+    [ObservableProperty]
+    private GitHubOAuth? gitHubOAuth = LoadGitHubOAuth();
+
+    partial void OnGitHubOAuthChanged(GitHubOAuth? value)
+    {
+        if (value is { AccessToken: not null })
+        {
+            Settings.Default.GitHubToken = null;
+            Settings.Default.GitHubOAuth = AesGcmEncryption.EncryptWithTpm(value.AccessToken, PRODUCT);
+        }
+        else
+        {
+            Settings.Default.GitHubOAuth = null;
+        }
+
+        Settings.Default.Save();
+    }
+
+    private static GitHubOAuth? LoadGitHubOAuth()
+    {
+        try
+        {
+            return string.IsNullOrWhiteSpace(Settings.Default.GitHubOAuth)
+                ? null
+                : new GitHubOAuth(AesGcmEncryption.DecryptWithTpm(Settings.Default.GitHubOAuth, PRODUCT));
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(LoadPrCommand))]
@@ -124,6 +159,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnUserNameChanged(string value)
     {
         Settings.Default.UserName = value;
+        Settings.Default.Save();
     }
 
     [ObservableProperty]
@@ -132,14 +168,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnPasswordChanged(string value)
     {
         Settings.Default.Password = value;
-    }
-
-    [ObservableProperty]
-    private string gitHubToken = Settings.Default.GitHubToken;
-
-    partial void OnGitHubTokenChanged(string value)
-    {
-        Settings.Default.GitHubToken = value;
+        Settings.Default.Save();
     }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(StatusCommand)), NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
@@ -148,6 +177,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnRepoPathChanged(string value)
     {
         Settings.Default.RepoPath = value;
+        Settings.Default.Save();
     }
 
     [ObservableProperty]
@@ -156,6 +186,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnExternalEditorPathChanged(string value)
     {
         Settings.Default.ExternalEditorPath = value;
+        Settings.Default.Save();
     }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
@@ -166,6 +197,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     private ListCollectionView? labelView;
     private CancellationTokenSource progressCts = new();
     private ProgressDialogViewModel? progressDialogViewModel = null;
+    private readonly string storagePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppDomain.CurrentDomain.FriendlyName);
 
     [GeneratedRegex("I(\\d*)")]
     private static partial Regex ZohoTicketRegex();
@@ -232,6 +264,86 @@ public sealed partial class MainViewModel : ObservableRecipient
     #endregion
 
     private bool IsPrNumberNumber() => int.TryParse(PrNumber, out _);
+
+    private async Task<GitHubClient?> AuthToGitHub()
+    {
+        var client = new GitHubClient(new Octokit.ProductHeaderValue(PRODUCT));
+
+        do
+        {
+            if (GitHubOAuth?.AccessToken is not null)
+            {
+                try
+                {
+                    // Try to get the user with the token, if it fails, we need to re-authenticate
+                    client.Credentials = new Octokit.Credentials(GitHubOAuth.AccessToken);
+                    var me = await client.User.Current();
+
+                    if (me is not null)
+                        break;
+
+                    Log("Could not get user with GitHub OAuth token, re-authenticating");
+                }
+                catch (Exception ex)
+                {
+                    Log("Failed to authenticate with GitHub, re-authenticating: " + ex.Message);
+                }
+            }
+
+            try
+            {
+                Log("Starting GitHub OAuth device flow");
+                var request = new OauthDeviceFlowRequest(CLIENT_ID);
+                var deviceFlowResponse = await client.Oauth.InitiateDeviceFlow(request);
+
+                var deviceCodeDialog = new Dialogs.GitHubDeviceCode()
+                {
+                    DataContext = new GitHubDeviceCodeDialogViewModel()
+                    {
+                        DeviceCode = deviceFlowResponse.UserCode,
+                        Url = deviceFlowResponse.VerificationUri,
+                    }
+                };
+
+                var tokenTask = client.Oauth.CreateAccessTokenForDeviceFlow(CLIENT_ID, deviceFlowResponse);
+                await Task.WhenAny(tokenTask, DialogHost.Show(deviceCodeDialog));
+
+                if (DialogHost.IsDialogOpen(null))
+                    DialogHost.Close(null);
+
+                if (!tokenTask.IsCompletedSuccessfully)
+                {
+                    Log("GitHub OAuth failed");
+                    MessageBox.Show("GitHub OAuth failed", "Error");
+                }
+
+                var token = await tokenTask;
+                GitHubOAuth = new GitHubOAuth(token);
+                Log("Authenticated with GitHub OAuth");
+
+                // GitHub OAuth app requires the app to be authorized by the orga owner for each user individually.
+                // Although you appear to have the correct authorization credentials, the `airsphere-gmbh` organization has enabled OAuth App access restrictions, meaning that data access to third-parties is limited. For more information on these restrictions, including how to enable this app, visit https://docs.github.com/articles/restricting-access-to-your-organization-s-data/
+
+                // GitHub App Installation requires the app to be installed in the orga
+                // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-with-a-github-app-on-behalf-of-a-user
+                // The app can only access resources in an account where it is installed. If your app is only installed on a user's personal account, it cannot access resources in an organization that the user is a member of unless the app is also installed on that organization.
+
+                // Check again
+            }
+            catch (Exception ex)
+            {
+                Log("Failed to authenticate with GitHub: " + ex.Message);
+                MessageBox.Show(ex.Message, "Error");
+                return null;
+            }
+        }
+        while (GitHubOAuth?.AccessToken is null);
+
+        //https://github.com/octokit/octokit.net/blob/main/docs/oauth-flow.md
+        client.Credentials = new Octokit.Credentials(GitHubOAuth.AccessToken);
+
+        return client;
+    }
 
     [RelayCommand(CanExecute = nameof(IsPrNumberNumber))]
     private async Task LoadPr()
@@ -307,15 +419,39 @@ public sealed partial class MainViewModel : ObservableRecipient
             _ = await DialogHost.Show(progressDialog);
             return;
         }
+        else if (PrNumber == "03")
+        {
+            var deviceCodeDialog = new Dialogs.GitHubDeviceCode()
+            {
+                DataContext = new GitHubDeviceCodeDialogViewModel()
+                {
+                    DeviceCode = "KUIH-OÖLI",
+                    Url = "https://qr.blubb.xyz",
+                }
+            };
+
+            await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(500)), DialogHost.Show(deviceCodeDialog));
+
+            if (DialogHost.IsDialogOpen(null))
+                DialogHost.Close(null);
+
+            return;
+        }
+        else if (PrNumber == "04")
+        {
+            AesGcmEncryption.DeleteTpmKey(PRODUCT);
+            return;
+        }
 
         if (!int.TryParse(PrNumber, out var prNum))
             return;
 
         ClearUi();
 
-        var client = new GitHubClient(new Octokit.ProductHeaderValue(PRODUCT));
-        var tokenAuth = new Octokit.Credentials(GitHubToken);
-        client.Credentials = tokenAuth;
+        var client = await AuthToGitHub();
+
+        if (client is null)
+            return;
 
         //var all = await client.Repository.GetAllForOrg("airsphere-gmbh");
 
@@ -326,6 +462,19 @@ public sealed partial class MainViewModel : ObservableRecipient
         catch (Exception ex) when (ex is Octokit.NotFoundException or AuthorizationException or ForbiddenException)
         {
             MessageBox.Show(ex.Message);
+            return;
+        }
+
+        if (PrNumber.StartsWith("0"))
+        {
+            try
+            {
+                await MergeQueue(client, Pr);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
             return;
         }
 
@@ -761,7 +910,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         catch (Exception ex)
         {
             MessageBox.Show($"Cannot read 'git:https://github.com' from windows credential store{Environment.NewLine}{ex.Message}",
-                "Error reading git credtentials");
+                "Error reading git credentials");
             return null;
         }
     }
@@ -1069,6 +1218,13 @@ public sealed partial class MainViewModel : ObservableRecipient
         await ResolveMergeConflicts(CancellationToken.None);
     }
 
+    [RelayCommand]
+    private void DeleteTpmKey()
+    {
+        AesGcmEncryption.DeleteTpmKey(PRODUCT);
+        GitHubOAuth = null;
+    }
+
     private bool CanStatus()
     {
         return RepoPath is not null && Directory.Exists(RepoPath);
@@ -1084,9 +1240,10 @@ public sealed partial class MainViewModel : ObservableRecipient
     {
         progressDialogViewModel?.Step = "Creating pull request";
 
-        var client = new GitHubClient(new Octokit.ProductHeaderValue(PRODUCT));
-        var tokenAuth = new Octokit.Credentials(GitHubToken);
-        client.Credentials = tokenAuth;
+        var client = await AuthToGitHub();
+
+        if (client is null)
+            return;
 
         var title = string.IsNullOrWhiteSpace(Title)
             ? $"({newBranchVersion})"
@@ -1122,7 +1279,7 @@ public sealed partial class MainViewModel : ObservableRecipient
             progressDialogViewModel?.Step = "Adding to merge queue";
             try
             {
-                await MergeQueue(newPr);
+                await MergeQueue(client, newPr);
             }
             catch (Exception ex)
             {
@@ -1141,7 +1298,7 @@ public sealed partial class MainViewModel : ObservableRecipient
         }
     }
 
-    private void OpenUrl(string url)
+    internal static void OpenUrl(string url)
     {
         Process.Start(new ProcessStartInfo(url)
         {
@@ -1215,29 +1372,55 @@ public sealed partial class MainViewModel : ObservableRecipient
         await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName().ToString());
     }
 
-    private async Task MergeQueue(PullRequest? inputPr)
+    private async Task MergeQueue(GitHubClient client, PullRequest? inputPr)
     {
         if (inputPr is null)
             return;
 
-        var connection = new Octokit.GraphQL.Connection(new(PRODUCT), GitHubToken);
+        var token = GitHubOAuth?.AccessToken;
+        if (string.IsNullOrWhiteSpace(token))
+            return;
 
-        var hasMergeQueueQuery = new Query()
-            .Repository(new(REPO), new(ORGA))
-            .MergeQueue(new(inputPr.Base.Ref))
-            .Select(x => x.Id);
+        var connection = new Octokit.GraphQL.Connection(new(PRODUCT), token);
 
-        var hasMergeQueue = await connection.Run(hasMergeQueueQuery);
-        if (hasMergeQueue is { Value.Length: > 0 })
+        var repoQuery = new Query()
+            .Repository(new(REPO), new(ORGA));
+
+        var prQuery = repoQuery
+            .PullRequest(new(inputPr.Number));
+
+        var autoMergeAllowed = await connection.Run(repoQuery.Select(x => x.AutoMergeAllowed).Compile());
+        var isMergeQueueEnabled = await connection.Run(prQuery.Select(x => x.IsMergeQueueEnabled).Compile());
+        var isInMergeQueue = await connection.Run(prQuery.Select(x => x.IsInMergeQueue).Compile());
+
+        if (isMergeQueueEnabled && !isInMergeQueue)
         {
-            var enable = new Mutation()
-                .EnablePullRequestAutoMerge(new Octokit.GraphQL.Model.EnablePullRequestAutoMergeInput()
-                {
-                    PullRequestId = new(inputPr.NodeId),
-                })
-                .Select(x => x.PullRequest.Number);
+            if (autoMergeAllowed)
+            {
+                _ = await connection.Run(new Mutation()
+                    .EnablePullRequestAutoMerge(new Octokit.GraphQL.Model.EnablePullRequestAutoMergeInput()
+                    {
+                        PullRequestId = new(inputPr.NodeId),
+                        MergeMethod = Octokit.GraphQL.Model.PullRequestMergeMethod.Rebase,
+                    })
+                    .Select(x => x.Select(y => y.PullRequest.AutoMergeRequest.EnabledAt)));
+            }
+            // https://github.com/cli/cli/issues/13398
+            // https://github.com/cli/cli/issues/8352
+            // https://github.com/orgs/community/discussions/24719
+            // https://github.com/github/docs/issues/31369
+            // 'Pull request At least 1 approving review is required by reviewers with write access.'
+            //else
+            //{
+            //    var enable = new Mutation()
+            //        .EnqueuePullRequest(new Octokit.GraphQL.Model.EnqueuePullRequestInput()
+            //        {
+            //            PullRequestId = new(inputPr.NodeId),
+            //        }).Select(x => x.Select(y => y.MergeQueueEntry.EstimatedTimeToMerge));
 
-            _ = await connection.Run(enable);
+            //    var estimatedTimeToMerge = await connection.Run(enable);
+            //    Log($"Estimated time to merge: {TimeSpan.FromSeconds(estimatedTimeToMerge?.Single() ?? 0).Humanize()}");
+            //}
         }
         else
         {
