@@ -11,6 +11,10 @@
     <DebugType>embedded</DebugType>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <LangVersion>preview</LangVersion>
+    <Product>IhGit</Product>
+    <BuildTimestamp Condition="'$(BuildTimestamp)' == ''">$([System.DateTime]::UtcNow.ToString("yyyy.MM.dd.HHmm"))</BuildTimestamp>
+    <InformationalVersion>$(BuildTimestamp)</InformationalVersion>
+    <Version>$(BuildTimestamp)</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

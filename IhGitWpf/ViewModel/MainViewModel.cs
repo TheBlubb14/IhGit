@@ -17,6 +17,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -192,6 +193,10 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
     private string featureName = "";
 
+
+    [ObservableProperty]
+    private string applicationVersion;
+
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
     private ListCollectionView? reviewerView;
     private ListCollectionView? labelView;
@@ -205,6 +210,10 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand]
     private void Loaded()
     {
+        ApplicationVersion = Assembly
+            .GetEntryAssembly()!
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
+            .InformationalVersion;
     }
 
     #region Collections Notify Hack
@@ -1425,6 +1434,19 @@ public sealed partial class MainViewModel : ObservableRecipient
         else
         {
             Log($"Found no merge queue for PR #{inputPr.Number} with base branch {inputPr.Base.Ref}");
+        }
+    }
+
+    [RelayCommand]
+    private void CopyToClipboard(string input)
+    {
+        try
+        {
+            Clipboard.SetText(input);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to copy to clipboard: {Environment.NewLine}{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

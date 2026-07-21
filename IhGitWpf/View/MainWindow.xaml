@@ -421,6 +421,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
@@ -494,6 +495,24 @@
                             ToolTip="Deletes the stored GitHub secret, the stored TPM key for this application and makes the encrypted GitHub secret un-decryptable. The next time you try to use the app, it will try to re-login to GitHub"
                             Command="{Binding DeleteTpmKeyCommand}" />
                 </StackPanel>
+                <TextBlock Grid.Row="6"
+                           Grid.Column="2"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Bottom"
+                           Opacity="0.5"
+                           Text="{Binding ApplicationVersion}">
+                    <TextBlock.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Copy"
+                                      Command="{Binding CopyToClipboardCommand}"
+                                      CommandParameter="{Binding ApplicationVersion}">
+                                <MenuItem.Icon>
+                                    <materialDesign:PackIcon Kind="ContentCopy" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </TextBlock.ContextMenu>
+                </TextBlock>
             </Grid>
         </TabItem>
     </TabControl>
