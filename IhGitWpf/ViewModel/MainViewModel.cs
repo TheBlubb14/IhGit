@@ -51,7 +51,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnMinSupportMajorVersionChanged(int value)
     {
         Settings.Default.MinSupportMajorVersion = value;
-        Settings.Default.Save();
+        SaveSettings();
     }
 
     [ObservableProperty]
@@ -60,7 +60,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnMinSupportMinorVersionChanged(int value)
     {
         Settings.Default.MinSupportMinorVersion = value;
-        Settings.Default.Save();
+        SaveSettings();
     }
 
     [ObservableProperty]
@@ -69,14 +69,17 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnAddToMergeQueueChanged(bool value)
     {
         Settings.Default.AddToMergeQueue = value;
-        Settings.Default.Save();
+        SaveSettings();
     }
 
     [ObservableProperty]
-    private GitHubOAuth? gitHubOAuth = LoadGitHubOAuth();
+    private GitHubOAuth? gitHubOAuth;
 
     partial void OnGitHubOAuthChanged(GitHubOAuth? value)
     {
+        if (offline is not null)
+            return;
+
         if (value is { AccessToken: not null })
         {
             Settings.Default.GitHubToken = null;
@@ -87,7 +90,14 @@ public sealed partial class MainViewModel : ObservableRecipient
             Settings.Default.GitHubOAuth = null;
         }
 
-        Settings.Default.Save();
+        SaveSettings();
+    }
+
+    private void SaveSettings()
+    {
+        // Offline scenarios must never overwrite the user's real settings
+        if (offline is null)
+            Settings.Default.Save();
     }
 
     private static GitHubOAuth? LoadGitHubOAuth()
@@ -160,7 +170,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnUserNameChanged(string value)
     {
         Settings.Default.UserName = value;
-        Settings.Default.Save();
+        SaveSettings();
     }
 
     [ObservableProperty]
@@ -169,7 +179,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnPasswordChanged(string value)
     {
         Settings.Default.Password = value;
-        Settings.Default.Save();
+        SaveSettings();
     }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(StatusCommand)), NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
@@ -178,7 +188,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnRepoPathChanged(string value)
     {
         Settings.Default.RepoPath = value;
-        Settings.Default.Save();
+        SaveSettings();
     }
 
     [ObservableProperty]
@@ -187,7 +197,7 @@ public sealed partial class MainViewModel : ObservableRecipient
     partial void OnExternalEditorPathChanged(string value)
     {
         Settings.Default.ExternalEditorPath = value;
-        Settings.Default.Save();
+        SaveSettings();
     }
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UpMergeCommand)), NotifyCanExecuteChangedFor(nameof(DownMergeCommand))]
@@ -197,6 +207,35 @@ public sealed partial class MainViewModel : ObservableRecipient
     [ObservableProperty]
     private string applicationVersion;
 
+    private readonly OfflineSession? offline;
+
+    public bool IsOffline => offline is not null;
+
+    public bool IsOnline => offline is null;
+
+    public string OfflineBanner => offline is null
+        ? ""
+        : $"OFFLINE SCENARIO '{offline.Manifest.Name}' - local Git only, no GitHub access, results are not real pull requests";
+
+    public MainViewModel(OfflineSession? offline = null)
+    {
+        this.offline = offline;
+
+        if (offline is null)
+        {
+            gitHubOAuth = LoadGitHubOAuth();
+            return;
+        }
+
+        // Assign the backing fields so no setting is written
+        repoPath = offline.Manifest.RepoPath;
+        minSupportMajorVersion = offline.Manifest.MinSupportMajor;
+        minSupportMinorVersion = offline.Manifest.MinSupportMinor;
+        addToMergeQueue = false;
+        userName = "";
+        password = "";
+        prNumber = "1";
+    }
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
     private ListCollectionView? reviewerView;
     private ListCollectionView? labelView;
@@ -276,6 +315,8 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     private async Task<GitHubClient?> AuthToGitHub()
     {
+        if (offline is not null)
+            return null;
         var client = new GitHubClient(new Octokit.ProductHeaderValue(PRODUCT));
 
         do
@@ -357,6 +398,12 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(IsPrNumberNumber))]
     private async Task LoadPr()
     {
+        if (offline is not null)
+        {
+            await LoadOfflineScenario();
+            return;
+        }
+
         if (PrNumber == "0")
         {
             using var vm = new MergeConflictViewModel();
@@ -561,99 +608,63 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (allBranches is not { Count: > 0 })
             return;
 
-        var allBranchVersions = allBranches
-            .Select(x => BranchVersion.TryParse(x.Name))
-            .OfType<BranchVersion>(); //It kinda a bug that nullable tracking doesn't work for this -> .Where(x => x is not null);
-
-        var allSupportBranches = allBranchVersions
-            .Where(x => x.BranchType == BranchType.support);
-
-        var deployBranch = allBranchVersions
-            .Where(x => x.BranchType == BranchType.deploy)
-            .MaxBy(x => x.Minor);
-
-        hasDeploy = deployBranch is not null;
-
-        maxMajorVersion = allSupportBranches.MaxBy(x => x.Major)?.Major ?? 0;
-        maxMinorVersion = allSupportBranches.Where(x => x.Major == maxMajorVersion).MaxBy(x => x.Minor)?.Minor ?? 0;
-
-        // TODO: major jumps, 4.00 -> 5.00 // 5.00 -> 4.00
-        minMajorVersion = allSupportBranches.MinBy(x => x.Major)?.Major ?? 0;
-        minMinorVersion = allSupportBranches.Where(x => x.Major == minMajorVersion).MinBy(x => x.Minor)?.Minor ?? 0;
-
-        minMajorVersion = Math.Max(minMajorVersion, MinSupportMajorVersion);
-        minMinorVersion = Math.Max(minMinorVersion, MinSupportMinorVersion);
-
         var prBranchVersion = new BranchVersion(Pr.Base.Ref);
+
+        ApplyMergeTargets(prBranchVersion, allBranches.Select(x => x.Name));
+    }
+
+    private void ApplyMergeTargets(BranchVersion prBranchVersion, IEnumerable<string> remoteBranchNames)
+    {
+        var plan = IhGit.Core.MergeTargetPlanner.Plan(
+            new IhGit.Core.BranchRef((IhGit.Core.BranchType)(int)prBranchVersion.BranchType, prBranchVersion.Major, prBranchVersion.Minor),
+            remoteBranchNames, MinSupportMajorVersion, MinSupportMinorVersion);
+
+        hasDeploy = plan.HasDeploy;
+        maxMajorVersion = plan.MaxMajor;
+        maxMinorVersion = plan.MaxMinor;
+        minMajorVersion = plan.MinMajor;
+        minMinorVersion = plan.MinMinor;
 
         CurrentVersion = prBranchVersion.ToString();
 
-        // UpMerge
-        switch (prBranchVersion.BranchType)
+        static BranchVersion ToVersion(IhGit.Core.BranchRef r) => new(r.Major, r.Minor, (BranchType)(int)r.BranchType);
+
+        // Like before, nothing is changed for a base branch without targets
+        if (prBranchVersion.BranchType is BranchType.support or BranchType.deploy)
+            UpMergeVersions = [.. plan.UpMerge.Select(ToVersion)];
+
+        if (prBranchVersion.BranchType is BranchType.support or BranchType.deploy or BranchType.stable)
+            DownMergeVersions = [.. plan.DownMerge.Select(ToVersion)];
+    }
+
+    private async Task LoadOfflineScenario()
+    {
+        var manifest = offline!.Manifest;
+
+        try
         {
-            case BranchType.support:
-                List<BranchVersion> result = [];
+            IhGit.Core.Scenarios.ScenarioGuard.RevalidateRemote(manifest);
+            await Task.Run(() => IhGit.Core.LocalGitWorkflow.Fetch(manifest.RepoPath));
+            var remoteBranches = IhGit.Core.LocalGitWorkflow.RemoteBranchNames(manifest.RepoPath);
 
-                if (prBranchVersion.Minor < maxMinorVersion)
-                {
-                    // Count up all support versions
-                    for (int i = prBranchVersion.Minor + 1; i <= maxMinorVersion; i++)
-                        result.Add(new(prBranchVersion.Major, i));
-                }
+            ClearUi();
 
-                if (deployBranch is not null)
-                    result.Add(deployBranch);
+            Title = manifest.Title;
+            Body = manifest.Body;
+            Commits = [.. manifest.Commits.Select(x => new Commit(x.Sha, x.Title))];
+            FeatureName = manifest.FeatureName;
+            ShowZohoButton = false;
+            ZohoUrl = "";
 
-                // Add stable
-                result.Add(new(0, 0, BranchType.stable));
+            MinSupportMajorVersion = manifest.MinSupportMajor;
+            MinSupportMinorVersion = manifest.MinSupportMinor;
 
-                UpMergeVersions = [.. result];
-                break;
-
-            case BranchType.deploy:
-                UpMergeVersions = [new(0, 0, BranchType.stable)];
-                break;
-
-            case BranchType.stable:
-            default:
-                // Nothing todo
-                break;
+            ApplyMergeTargets(new BranchVersion(manifest.TargetBranch), remoteBranches);
+            Log($"Offline scenario '{manifest.Name}' loaded: {manifest.Description}");
         }
-
-        // DownMerge
-        switch (prBranchVersion.BranchType)
+        catch (Exception ex)
         {
-            case BranchType.support:
-            case BranchType.deploy:
-            case BranchType.stable:
-                List<BranchVersion> result = [];
-
-                var downMergeMaxMinorVersion = prBranchVersion.Minor;
-                var downMergeMajorVersion = prBranchVersion.Major;
-
-                if (prBranchVersion.BranchType == BranchType.stable)
-                {
-                    // We are on stable, so we need to also include the max support version
-                    downMergeMaxMinorVersion = maxMinorVersion + 1;
-                    downMergeMajorVersion = maxMajorVersion;
-
-                    if (deployBranch is not null)
-                        result.Add(deployBranch);
-                }
-
-                if (downMergeMaxMinorVersion > minMinorVersion)
-                {
-                    // Count up all support versions
-                    for (int i = downMergeMaxMinorVersion - 1; i >= minMinorVersion; i--)
-                        result.Add(new(downMergeMajorVersion, i));
-                }
-
-                DownMergeVersions = [.. result];
-                break;
-
-            default:
-                // Nothing todo
-                break;
+            MessageBox.Show(ex.Message, "Cannot load offline scenario");
         }
     }
 
@@ -926,6 +937,14 @@ public sealed partial class MainViewModel : ObservableRecipient
 
     private void Fetch()
     {
+        if (offline is not null)
+        {
+            IhGit.Core.Scenarios.ScenarioGuard.RevalidateRemote(offline.Manifest);
+            var fetch = IhGit.Core.LocalGitWorkflow.Fetch(RepoPath);
+            Log(fetch.Message);
+            return;
+        }
+
         using var repo = new Repository(RepoPath);
 
         var log = "";
@@ -1024,7 +1043,7 @@ public sealed partial class MainViewModel : ObservableRecipient
 
                     try
                     {
-                        var sha = commit.Value.Sha;
+                        var sha = commit.Sha;
                         var c = repo.Lookup<LibGit2Sharp.Commit>(sha);
 
                         cancellationToken.ThrowIfCancellationRequested();
@@ -1230,6 +1249,8 @@ public sealed partial class MainViewModel : ObservableRecipient
     [RelayCommand]
     private void DeleteTpmKey()
     {
+        if (offline is not null)
+            return;
         AesGcmEncryption.DeleteTpmKey(PRODUCT);
         GitHubOAuth = null;
     }
@@ -1248,6 +1269,20 @@ public sealed partial class MainViewModel : ObservableRecipient
     private async Task PullRequest(BranchVersion newBranchVersion, bool isUpMerge)
     {
         progressDialogViewModel?.Step = "Creating pull request";
+
+        if (offline is not null)
+        {
+            var result = IhGit.Core.Scenarios.LocalRequestStore.Append(
+                offline.Manifest,
+                string.IsNullOrWhiteSpace(Title) ? $"({newBranchVersion})" : $"{Title} ({newBranchVersion})",
+                newBranchVersion.GetBranchNameForChanges(FeatureName),
+                newBranchVersion.GetRemoteBranchName(),
+                isUpMerge,
+                Commits.Where(x => x.IsSelected).Select(x => x.Sha));
+
+            Log($"Local result #{result.Number}: {result.SourceBranch} -> {result.BaseBranch} ({result.Note})");
+            return;
+        }
 
         var client = await AuthToGitHub();
 
@@ -1378,6 +1413,8 @@ public sealed partial class MainViewModel : ObservableRecipient
     private async Task Push()
     {
         progressDialogViewModel?.Step = "Pushing";
+        if (offline is not null)
+            IhGit.Core.Scenarios.ScenarioGuard.RevalidateRemote(offline.Manifest);
         await Git(new("git push failed", "git push -u origin failed"), "push", "-u", "origin", CurrentBranchName().ToString());
     }
 

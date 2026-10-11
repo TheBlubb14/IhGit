@@ -23,6 +23,15 @@
         </behavior:EventTrigger>
     </behavior:Interaction.Triggers>
 
+    <DockPanel>
+    <Border DockPanel.Dock="Top"
+            Background="DarkOrange"
+            Padding="8,4"
+            Visibility="{Binding IsOffline, Converter={x:Static materialDesignConverters:BooleanToVisibilityConverter.CollapsedInstance}}">
+        <TextBlock Foreground="Black"
+                   FontWeight="Bold"
+                   Text="{Binding OfflineBanner}" />
+    </Border>
     <TabControl>
         <TabItem Header="Merging">
             <materialDesign:DialogHost>
@@ -452,6 +461,7 @@
                          ToolTip="The complete path to the root of your Git Project. This Repo is used for the Git Operations, like checkout, create branches and chery-pick"
                          materialDesign:TextFieldAssist.HasClearButton="True"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         IsReadOnly="{Binding IsOffline, Mode=OneWay}"
                          Text="{Binding RepoPath, UpdateSourceTrigger=LostFocus, Mode=TwoWay}" />
                 <TextBox Grid.Row="2"
                          Grid.Column="0"
@@ -483,6 +493,7 @@
                 </StackPanel>
                 <CheckBox Grid.Row="4"
                           Grid.Column="0"
+                          IsEnabled="{Binding IsOnline}"
                           IsChecked="{Binding AddToMergeQueue}"
                           Content="Add to merge queue"
                           ToolTip="Adds the created pull request automatically to the merge queue" />
@@ -492,6 +503,7 @@
                             VerticalAlignment="Top"
                             HorizontalAlignment="Left">
                     <Button Content="Delete TPM key"
+                            IsEnabled="{Binding IsOnline}"
                             ToolTip="Deletes the stored GitHub secret, the stored TPM key for this application and makes the encrypted GitHub secret un-decryptable. The next time you try to use the app, it will try to re-login to GitHub"
                             Command="{Binding DeleteTpmKeyCommand}" />
                 </StackPanel>
@@ -516,4 +528,5 @@
             </Grid>
         </TabItem>
     </TabControl>
+    </DockPanel>
 </Window>
