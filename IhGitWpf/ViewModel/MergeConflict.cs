@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using IhGitWpf.Properties;
 using System;
 using System.Diagnostics;
 using System.IO;

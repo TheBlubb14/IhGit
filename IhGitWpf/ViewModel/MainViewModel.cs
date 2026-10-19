@@ -4,7 +4,6 @@ using CliWrap.Exceptions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Humanizer;
-using IhGitWpf.Properties;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using MaterialDesignThemes.Wpf;
