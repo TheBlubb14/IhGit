@@ -20,15 +20,42 @@ namespace IhGitWpf
 
         public App()
         {
-            Services = ConfigureServices();
+            Services = ConfigureServices(ParseOfflineSession());
         }
+
+        private OfflineSession? ParseOfflineSession()
+        {
+            var args = Environment.GetCommandLineArgs();
+            var index = Array.IndexOf(args, OfflineSession.Argument);
+            if (index < 0)
+                return null;
+
+            try
+            {
+                if (index + 1 >= args.Length)
+                    throw new ArgumentException($"{OfflineSession.Argument} requires the path to a scenario manifest.json");
+
+                return new OfflineSession(IhGit.Core.Scenarios.ScenarioGuard.Validate(args[index + 1]));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Cannot start offline scenario");
+                Environment.Exit(1);
+                return null;
+            }
+        }
+
+        public bool IsOffline => Services.GetService<OfflineSession>() is not null;
 
         /// <summary>
         /// Configures the services for the application.
         /// </summary>
-        private static IServiceProvider ConfigureServices()
+        private static IServiceProvider ConfigureServices(OfflineSession? offline)
         {
             var services = new ServiceCollection();
+
+            if (offline is not null)
+                services.AddSingleton(offline);
 
             services.AddSingleton<MainViewModel>();
 
@@ -37,7 +64,10 @@ namespace IhGitWpf
 
         protected override void OnExit(ExitEventArgs e)
         {
-            Settings.Default.Save();
+            // Offline scenarios must never touch the user's real settings
+            if (!IsOffline)
+                Settings.Default.Save();
+
             base.OnExit(e);
         }
     }

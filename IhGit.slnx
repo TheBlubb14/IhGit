@@ -1,4 +1,7 @@
 <Solution>
   <Project Path="IhGit/IhGit.csproj" />
+  <Project Path="IhGit.Core/IhGit.Core.csproj" />
+  <Project Path="IhGit.Scenarios/IhGit.Scenarios.csproj" />
+  <Project Path="IhGit.Tests/IhGit.Tests.csproj" />
   <Project Path="IhGitWpf/IhGitWpf.csproj" />
 </Solution>

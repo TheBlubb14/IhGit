@@ -21,6 +21,10 @@
     <NoWarn>1701;1702;NU1701</NoWarn>
   </PropertyGroup>
 
+    <ItemGroup>
+    <ProjectReference Include="..\IhGit.Core\IhGit.Core.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <Content Include="github.ico" />
   </ItemGroup>
