@@ -418,6 +418,9 @@
                 </Grid>
             </materialDesign:DialogHost>
         </TabItem>
+            <TabItem Header="Reviews">
+                <Button Content="Load" Command="{Binding ReviewCommand}" />
+            </TabItem>
         <TabItem Header="Settings">
             <Grid Margin="16">
                 <Grid.ColumnDefinitions>

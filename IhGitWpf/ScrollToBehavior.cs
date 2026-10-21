@@ -24,7 +24,7 @@ public sealed class ScrollToBehavior : Behavior<ListView>
     /// <summary>
     /// Using a DependencyProperty as the backing store for <see cref="Enabled"/>
     /// </summary>
-    public static readonly System.Windows.DependencyProperty EnabledProperty =
+    public static readonly DependencyProperty EnabledProperty =
         System.Windows.DependencyProperty.Register("Enabled", typeof(bool), typeof(ScrollToBehavior), new PropertyMetadata(true));
 
     /// <summary>
@@ -39,7 +39,7 @@ public sealed class ScrollToBehavior : Behavior<ListView>
     /// <summary>
     /// Using a DependencyProperty as the backing store for <see cref="ScrollMode"/>
     /// </summary>
-    public static readonly System.Windows.DependencyProperty ScrollProperty =
+    public static readonly DependencyProperty ScrollProperty =
         System.Windows.DependencyProperty.Register("Scroll", typeof(ScrollTo), typeof(ScrollToBehavior), new PropertyMetadata(ScrollTo.Bottom));
 
     //protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)

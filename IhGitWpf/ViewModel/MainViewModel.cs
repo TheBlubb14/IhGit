@@ -4,9 +4,12 @@ using CliWrap.Exceptions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Humanizer;
+using IhGit.Core;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using MaterialDesignThemes.Wpf;
+using Microsoft.Windows.Themes;
+using Newtonsoft.Json.Linq;
 using Octokit;
 using Octokit.GraphQL;
 using System;
@@ -16,6 +19,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -245,6 +249,9 @@ public sealed partial class MainViewModel : ObservableRecipient
     [GeneratedRegex("I(\\d*)")]
     private static partial Regex ZohoTicketRegex();
 
+    private readonly HttpClient _diffClient = new();
+    private string[] _allBranchNames = [];
+
     [RelayCommand]
     private void Loaded()
     {
@@ -252,6 +259,10 @@ public sealed partial class MainViewModel : ObservableRecipient
             .GetEntryAssembly()!
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
             .InformationalVersion;
+
+        _diffClient.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2026-03-10");
+        _diffClient.DefaultRequestHeaders.Accept.Add(new("application/vnd.github.diff"));
+        _diffClient.DefaultRequestHeaders.UserAgent.Add(new(PRODUCT, ApplicationVersion));
     }
 
     #region Collections Notify Hack
@@ -607,15 +618,15 @@ public sealed partial class MainViewModel : ObservableRecipient
         if (allBranches is not { Count: > 0 })
             return;
 
-        var prBranchVersion = new BranchVersion(Pr.Base.Ref);
+        _allBranchNames = [.. allBranches.Select(x => x.Name)];
 
-        ApplyMergeTargets(prBranchVersion, allBranches.Select(x => x.Name));
+        ApplyMergeTargets(new BranchVersion(Pr.Base.Ref), _allBranchNames);
     }
 
     private void ApplyMergeTargets(BranchVersion prBranchVersion, IEnumerable<string> remoteBranchNames)
     {
         var plan = IhGit.Core.MergeTargetPlanner.Plan(
-            new IhGit.Core.BranchRef((IhGit.Core.BranchType)(int)prBranchVersion.BranchType, prBranchVersion.Major, prBranchVersion.Minor),
+            new BranchRef(prBranchVersion.BranchType, prBranchVersion.Major, prBranchVersion.Minor),
             remoteBranchNames, MinSupportMajorVersion, MinSupportMinorVersion);
 
         hasDeploy = plan.HasDeploy;
@@ -626,7 +637,7 @@ public sealed partial class MainViewModel : ObservableRecipient
 
         CurrentVersion = prBranchVersion.ToString();
 
-        static BranchVersion ToVersion(IhGit.Core.BranchRef r) => new(r.Major, r.Minor, (BranchType)(int)r.BranchType);
+        static BranchVersion ToVersion(BranchRef r) => new(r.Major, r.Minor, r.BranchType);
 
         // Like before, nothing is changed for a base branch without targets
         if (prBranchVersion.BranchType is BranchType.support or BranchType.deploy)
@@ -1484,5 +1495,129 @@ public sealed partial class MainViewModel : ObservableRecipient
         {
             MessageBox.Show($"Failed to copy to clipboard: {Environment.NewLine}{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    [RelayCommand]
+    private async Task Review()
+    {
+        if (Pr is null)
+            return;
+
+        // Ensures we have a token
+        var client = await AuthToGitHub();
+
+        if (client is null)
+            return;
+
+        var token = GitHubOAuth?.AccessToken;
+
+        if (token is null)
+            return;
+
+        var connection = new Octokit.GraphQL.Connection(new(PRODUCT), token);
+
+        var repoQuery = new Query()
+            .Repository(new(REPO), new(ORGA));
+
+        var regex = ZohoTicketRegex().Match(Title);
+
+        if (!regex.Success)
+            return;
+
+        var zohoNumber = regex.Groups[1].Value;
+
+        var prBranchVersion = new BranchVersion(Pr.Base.Ref);
+
+        // Get all possible previous branches
+        var plan = MergeTargetPlanner.Plan(
+            new BranchRef(prBranchVersion.BranchType, prBranchVersion.Major, prBranchVersion.Minor),
+            _allBranchNames, MinSupportMajorVersion, MinSupportMinorVersion);
+
+        var possiblePreviousBranches = plan.DownMerge.Select(x => x.ToString()).ToArray();
+
+        var prQuery =
+            repoQuery
+            .PullRequests(last: 100, states: new[] { Octokit.GraphQL.Model.PullRequestState.Merged },
+            baseRefName: new Octokit.GraphQL.Core.Arg<string>("base", false))
+            .Nodes
+            .Select(x => new AAA(x.Number, x.Title, x.BaseRefName))
+            .Compile();
+
+        var parameters = new Dictionary<string, object>();
+        AAA[] relatedPrs = [];
+
+        // Iterate through each possible previous branch, fetch and loop until we find some related PRs
+        foreach (var possiblePreviousBranch in possiblePreviousBranches)
+        {
+            parameters["base"] = possiblePreviousBranch;
+            var prs = await connection.Run(prQuery, parameters);
+
+
+            var filtered = prs
+                // Match the same zoho number
+                .Where(x => ZohoTicketRegex().Match(x.Title).Groups[1].Value == zohoNumber)
+                // Exclude the current PR
+                .Where(x => x.Number != Pr.Number);
+
+            if (filtered.Any())
+            {
+                relatedPrs = [.. filtered];
+                break;
+            }
+        }
+
+        // todo: for each pr, ass a new column. 
+        // foreach column shows one text editor with a patch file contnet
+        // maybe we can use monaco with the vscode text differ here?
+        // outside the columns, of the left side of the page, there is a checked list of all files changed through any of the prs.
+        // if clicked on one, it shows the patch in all the columns editor., then have a button to mark the files as reviewed, and check the checkbox of the item, and moves the file sleect to the next file. or at the end, show a dialog with success
+        // maybe also add a undo button, which unchecks the checkbox
+
+        var sb = new StringBuilder();
+        foreach (var pr in relatedPrs)
+        {
+            Log($"Found related PR #{pr.Number}: {pr.Title}");
+            sb.AppendLine(await GetPrDiff(pr.Number));
+        }
+
+        var mergedPrDiffFile = Path.Combine(Path.GetTempPath(), $"{PRODUCT}_{zohoNumber}_{DateTime.Now:yyyyMMddHHmmss}.diff");
+        await File.WriteAllTextAsync(mergedPrDiffFile, sb.ToString());
+
+        var currentPrDiffFile = Path.Combine(Path.GetTempPath(), $"{PRODUCT}_{zohoNumber}_{DateTime.Now:yyyyMMddHHmmss}_org.diff");
+        await File.WriteAllTextAsync(currentPrDiffFile, await GetPrDiff(Pr.Number));
+
+        await OpenCompareView(mergedPrDiffFile, currentPrDiffFile);
+
+        File.Delete(mergedPrDiffFile);
+        File.Delete(currentPrDiffFile);
+    }
+
+    record AAA(int Number, string Title, string BaseRefName);
+
+    private async Task OpenCompareView(string file1, string file2)
+    {
+        var editorPath = Environment.ExpandEnvironmentVariables(Settings.Default.ExternalEditorPath);
+        var isCode = editorPath.EndsWith("code.exe", StringComparison.OrdinalIgnoreCase);
+
+        var arguments = isCode ? $"--diff \"{file1}\" \"{file2}\"" : $"\"{file1}\" \"{file2}\"";
+
+        var task = Process.Start(new ProcessStartInfo(editorPath)
+        {
+            Arguments = arguments,
+            UseShellExecute = false
+        })?.WaitForExitAsync() ?? Task.CompletedTask;
+
+        await task;
+    }
+
+    private async Task<string?> GetPrDiff(int prNumber)
+    {
+        var token = GitHubOAuth?.AccessToken;
+
+        if (token is null)
+            return null;
+
+        _diffClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return await _diffClient.GetStringAsync($"https://api.github.com/repos/{ORGA}/{REPO}/pulls/{prNumber}");
     }
 }
